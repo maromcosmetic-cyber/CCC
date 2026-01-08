@@ -78,3 +78,6 @@ export const JOB_TYPES = {
 export type JobType = typeof JOB_TYPES[keyof typeof JOB_TYPES];
 
 
+
+// Re-export getQueueClient for backward compatibility
+export { getQueueClient } from './client';
