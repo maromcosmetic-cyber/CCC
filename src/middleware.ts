@@ -49,6 +49,27 @@ export async function middleware(request: NextRequest) {
     pathname: request.nextUrl.pathname
   });
 
+  // Fallback: Check for manually-set auth cookie if SSR client didn't find user
+  let validSession = !!user;
+  if (!validSession) {
+    try {
+      const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL!.split('//')[1].split('.')[0];
+      const authCookie = request.cookies.get(`sb-${projectRef}-auth-token`);
+      if (authCookie) {
+        const authData = JSON.parse(authCookie.value);
+        if (authData.access_token && authData.expires_at) {
+          const expiresAt = authData.expires_at * 1000;
+          if (expiresAt > Date.now()) {
+            validSession = true;
+            console.log('[Middleware] Fallback: Valid session found in manual cookie');
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[Middleware] Fallback check failed:', e);
+    }
+  }
+
   const pathname = request.nextUrl.pathname;
 
   // Check if current route requires authentication
@@ -62,17 +83,18 @@ export async function middleware(request: NextRequest) {
   console.log('[Middleware] Route check:', {
     isProtectedRoute,
     isAuthRoute,
-    hasUser: !!user
+    hasUser: !!user,
+    validSession
   });
 
   // Redirect unauthenticated users to login for protected routes
-  if (!user && isProtectedRoute) {
-    console.log('[Middleware] Redirecting to login - no user for protected route');
+  if (!validSession && isProtectedRoute) {
+    console.log('[Middleware] Redirecting to login - no valid session for protected route');
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
   // Redirect authenticated users away from auth pages to studio
-  if (user && isAuthRoute) {
+  if (validSession && isAuthRoute) {
     console.log('[Middleware] Redirecting to studio - user already authenticated');
     return NextResponse.redirect(new URL('/studio/overview', request.url));
   }
