@@ -1,0 +1,3 @@
+-- This migration is skipped because 010_add_legal_pages.sql handles the constraint update with a superset of providers.
+-- Original content was failing due to constraint violation on re-check.
+-- Skipping to allow 010 to run.

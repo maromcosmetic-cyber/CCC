@@ -1,0 +1,21 @@
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:16","message":"SignIn handler entry","data":{"email":"maromcosmetic@gmail.com"},"timestamp":1766999511259}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:47","message":"Before fetch","data":{"email":"maromcosmetic@gmail.com"},"timestamp":1766999511261}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:11","message":"Handler entry","data":{"method":"POST","body":{"email":"maromcosmetic@gmail.com","password":"Moringa2025@"}},"timestamp":1766999511359}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:51","message":"Setting cookie","data":{"cookieSet":true},"timestamp":1766999511863}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:66","message":"Handler exit","data":{"user":true,"session_keys":["access_token","token_type","expires_in","expires_at","refresh_token","user","weak_password"]},"timestamp":1766999511864}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:61","message":"After fetch","data":{"status":200},"timestamp":1766999511865}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:87","message":"REDIRECT FIRED","data":{},"timestamp":1766999511866}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:16","message":"SignIn handler entry","data":{"email":"orianbartov@gmail.com"},"timestamp":1766999603907}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:47","message":"Before fetch","data":{"email":"orianbartov@gmail.com"},"timestamp":1766999603911}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:11","message":"Handler entry","data":{"method":"POST","body":{"email":"orianbartov@gmail.com","password":"Orian2025@"}},"timestamp":1766999604132}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:51","message":"Setting cookie","data":{"cookieSet":true},"timestamp":1766999605222}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:66","message":"Handler exit","data":{"user":true,"session_keys":["access_token","token_type","expires_in","expires_at","refresh_token","user","weak_password"]},"timestamp":1766999605223}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:61","message":"After fetch","data":{"status":200},"timestamp":1766999605228}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:87","message":"REDIRECT FIRED","data":{},"timestamp":1766999605229}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:16","message":"SignIn handler entry","data":{"email":"maromcosmetic@gmail.com"},"timestamp":1766999650920}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:47","message":"Before fetch","data":{"email":"maromcosmetic@gmail.com"},"timestamp":1766999650927}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:11","message":"Handler entry","data":{"method":"POST","body":{"email":"maromcosmetic@gmail.com","password":"Moringa2025@"}},"timestamp":1766999651026}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:51","message":"Setting cookie","data":{"cookieSet":true},"timestamp":1766999651464}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H1","location":"pages/api/auth/signin.ts:66","message":"Handler exit","data":{"user":true,"session_keys":["access_token","token_type","expires_in","expires_at","refresh_token","user","weak_password"]},"timestamp":1766999651465}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:61","message":"After fetch","data":{"status":200},"timestamp":1766999651470}
+{"sessionId":"debug-session","runId":"r1","hypothesisId":"H2","location":"login/page.tsx:87","message":"REDIRECT FIRED","data":{},"timestamp":1766999651472}

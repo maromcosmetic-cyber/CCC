@@ -1,0 +1,10 @@
+
+import { Video, Sparkles, Mic, Subtitles, Wand2, Layers } from "lucide-react";
+
+// Assuming these icons are available in lucide-react. 
+// If not, I'll stick to standard ones available from the previous Shell.tsx context.
+// Re-verifying icons: Video, Sparkles, Mic, Subtitles (imported), Wand2 (imported), Layers, Image (renamed to ImageIcon)
+
+// I don't need to write a file for this, I'm just verifying imports in Shell.tsx via replace_file_content.
+// But replace_file_content for DESIGN_SUB_NAV uses 'Subtitles', 'Wand2'.
+// I need to ensure they are imported in Shell.tsx.
