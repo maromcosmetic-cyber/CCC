@@ -17,10 +17,14 @@ if (!databaseUrl) {
 }
 
 async function runMigrations() {
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL or SUPABASE_DB_URL environment variable is required');
+  }
+
   // Parse connection string to handle special characters in password
   const url = new URL(databaseUrl.replace('postgresql://', 'https://'));
   const password = url.password || databaseUrl.match(/postgresql:\/\/postgres:([^@]+)@/)?.[1];
-  
+
   const client = new Client({
     host: url.hostname,
     port: parseInt(url.port || '5432'),
