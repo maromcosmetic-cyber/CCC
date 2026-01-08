@@ -19,7 +19,11 @@ export async function getWooCommerceClient(projectId: string) {
             url: url,
             consumerKey: String(credentials.consumer_key),
             consumerSecret: String(credentials.consumer_secret),
-            version: "wc/v3"
+            version: "wc/v3",
+            timeout: 30000, // 30 seconds timeout
+            axiosConfig: {
+                timeout: 30000 // Also set axios timeout
+            }
         });
     } catch (error: any) {
         console.error("WooCommerce client factory error:", error);
