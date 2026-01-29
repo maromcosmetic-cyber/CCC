@@ -36,11 +36,11 @@ export default function ResetPasswordPage() {
         }
 
         // Try to get code from URL (different parameter names Supabase might use)
-        const code = searchParams.get('code') ||
-          searchParams.get('token') ||
-          searchParams.get('access_token');
+        const code = searchParams?.get('code') ||
+          searchParams?.get('token') ||
+          searchParams?.get('access_token');
 
-        const type = searchParams.get('type');
+        const type = searchParams?.get('type');
 
         console.log('[Reset Password] URL params:', { code: !!code, type });
 

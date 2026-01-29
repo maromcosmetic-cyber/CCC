@@ -7,7 +7,8 @@ export interface WooCommerceProduct {
   price: string;
   regular_price?: string;
   sale_price?: string;
-  stock_status: 'instock' | 'outofstock' | 'onbackorder';
+  stock_status: string;
+  stock_quantity: number | null;
   images: Array<{
     id: number;
     src: string;
@@ -17,23 +18,28 @@ export interface WooCommerceProduct {
     id: number;
     name: string;
   }>;
-  metadata?: Record<string, any>;
+  meta_data?: Array<{
+    id: number;
+    key: string;
+    value: string;
+  }>;
+  status: string;
 }
 
 export interface WooCommerceProvider {
   syncProducts(storeUrl: string, credentials: any): Promise<WooCommerceProduct[]>;
-  
+
   getProduct(productId: number): Promise<WooCommerceProduct>;
-  
+
   updateProduct(
     productId: number,
     updates: Partial<WooCommerceProduct>
   ): Promise<WooCommerceProduct>;
-  
+
   createProduct(product: Partial<WooCommerceProduct>): Promise<WooCommerceProduct>;
-  
+
   deleteProduct(productId: number): Promise<void>;
-  
+
   getCategories(): Promise<Array<{ id: number; name: string }>>;
 }
 

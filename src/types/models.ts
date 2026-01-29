@@ -99,6 +99,8 @@ export type AudienceSegment = {
   version: number;
   name: string;
   description?: string;
+  pain_points?: string[];
+  desires?: string[];
   company_profile_version_id?: string;
   user_prompt?: string;
   ai_enhanced_prompt?: string;
@@ -372,4 +374,378 @@ export type AuditLogEntry = {
   created_at: string;
 };
 
+// Product Image Generation Types
+export type ImageType = 'product_only' | 'product_persona' | 'ugc_style';
+
+export type AudienceImageGeneration = {
+  id: string;
+  project_id: string;
+  audience_id: string;
+  persona_name?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  config: AudienceImageGenerationConfig;
+  generated_images: GeneratedImage[];
+  error_message?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+};
+
+export type AudienceImageGenerationConfig = {
+  product_ids: string[];
+  campaign_id?: string;
+  image_types?: ImageType[];
+  variations_per_type?: number | {
+    product_only?: number;
+    product_persona?: number;
+    ugc_style?: number;
+  };
+  platform?: string;
+  funnel_stage?: string;
+  angle?: string;
+};
+
+export type GeneratedImage = {
+  id: string;
+  image_type: ImageType;
+  product_ids: string[];
+  storage_path: string;
+  storage_bucket: string;
+  storage_url: string;
+  metadata: ImageMetadata;
+  created_at: string;
+};
+
+export type ImageMetadata = {
+  audience_id: string;
+  persona_name?: string;
+  campaign_id?: string;
+  platform?: string;
+  funnel_stage?: string;
+  angle?: string;
+  prompt?: string;
+  generation_steps?: Record<string, any>;
+  quality_validation?: QualityValidationResult;
+};
+
+export type QualityValidationResult = {
+  passed: boolean;
+  checks: {
+    product_fidelity?: boolean;
+    brand_compliance?: boolean;
+    persona_accuracy?: boolean;
+    realism?: boolean;
+    no_ai_artifacts?: boolean;
+  };
+  errors?: string[];
+  warnings?: string[];
+};
+
+// Brand Identity Playbook (simplified structure matching the stored JSONB)
+export type BrandIdentityPlaybook = {
+  dna?: Record<string, any>;
+  product?: Record<string, any>;
+  audience?: Record<string, any>;
+  positioning?: Record<string, any>;
+  market?: Record<string, any>;
+  offer?: Record<string, any>;
+  journey?: Record<string, any>;
+  narrative?: Record<string, any>;
+  pain_matrix?: Record<string, any> | any[];
+  content_pillars?: Record<string, any> | any[];
+  trust_infrastructure?: Record<string, any>;
+  community_model?: Record<string, any>;
+  platform_strategy?: Record<string, any>;
+  long_term_vision?: Record<string, any>;
+  kpis_optimization?: Record<string, any>;
+  ai_autonomy_rules?: Record<string, any>;
+  voice?: Record<string, any>;
+  guardrails?: Record<string, any>;
+  visual?: {
+    colors?: {
+      primary?: Array<{ hex: string; name?: string }>;
+      secondary?: Array<{ hex: string; name?: string }>;
+      accent?: Array<{ hex: string; name?: string }>;
+    };
+    typography?: Record<string, any>;
+    logo?: Record<string, any>;
+    image_style?: string;
+    mood?: string;
+  };
+  personas?: Record<string, PersonaProfile>;
+  [key: string]: any; // Allow additional properties
+};
+
+export type PersonaProfile = {
+  name: string;
+  role?: string;
+  age_range?: string;
+  occupation?: string;
+  emotional_state?: string;
+  core_concerns?: string;
+  personality_traits?: string[];
+  visual_style?: string;
+  communication_style?: string;
+  trust_signals?: string;
+  avoid_traits?: string;
+  casting_notes?: string;
+  image_prompt?: string;
+  imageUrl?: string;
+  [key: string]: any;
+};
+
+export type PersonaContext = {
+  persona: PersonaProfile;
+  audience: AudienceSegment;
+};
+
+export type AudienceContext = {
+  audience: AudienceSegment;
+  persona?: PersonaProfile;
+};
+
+export type ScenePlanningResult = {
+  scene_description: string;
+  mood: string;
+  lighting: string;
+  color_harmony: string[];
+  composition_notes?: string;
+  style_guidelines?: string[];
+  // Scene-aware generation fields
+  persona_attire_adaptation?: string;  // What the persona should wear for this scene
+  product_placement_zone?: 'left' | 'right' | 'center' | 'bottom-left' | 'bottom-right';
+  product_scale_hint?: 'small' | 'medium' | 'large';
+  scene_type?: 'shower' | 'bathroom' | 'living_room' | 'kitchen' | 'outdoor' | 'studio' | 'other';
+  // Product-in-use action (e.g., "pouring shampoo into palm", "applying cream to face")
+  product_action?: string;
+};
+
+export type ProductPersonaResult = {
+  isolated_product: {
+    original_image: string;
+    isolated_image?: string;
+  };
+  final_image: {
+    url: string;
+    base64?: string;
+    width?: number;
+    height?: number;
+  };
+  scene_plan: ScenePlanningResult;
+  overlay_image: string;
+};
+
+// Extended MediaAsset with audience-specific fields
+export type MediaAssetWithAudience = MediaAsset & {
+  audience_id?: string;
+  persona_name?: string;
+  image_type?: ImageType;
+  product_ids?: string[];
+};
+
+
+// Image Ads System Types
+
+export type ImageLayoutMap = {
+  safe_text_zones: Array<'top' | 'bottom' | 'left' | 'right' | 'center'>;
+  avoid_zones: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+  contrast_level: 'low' | 'medium' | 'high';
+  visual_noise: 'low' | 'medium' | 'high';
+  dominant_colors: string[];
+  suggested_text_color?: string;
+};
+
+export type AdCreativeStrategy = {
+  angle: 'problem_solution' | 'social_proof' | 'authority' | 'urgency' | 'benefit' | 'offer';
+  emotional_tone: 'empathetic' | 'energetic' | 'urgent' | 'authoritative' | 'playful';
+  message_density: 'minimal' | 'moderate' | 'detailed';
+  risk_level: 'conservative' | 'bold';
+  hook_concept: string;
+  rationale: string;
+};
+
+export type VisualGuideline = {
+  id: string;
+  project_id: string;
+  category: string;
+  guideline_json: {
+    market_patterns: {
+      image_placement: 'center' | 'left' | 'right';
+      text_hierarchy: 'headline_first' | 'support_first';
+      cta_position: 'bottom' | 'center' | 'overlay';
+      visual_density: 'minimal' | 'moderate' | 'busy';
+      background_style: 'clean' | 'lifestyle' | 'gradient';
+      dominant_colors: string[];
+      composition_rules: string[];
+    };
+    performance_signals: {
+      longevity_days: number;
+      platform_coverage: string[];
+      frequency_score: number;
+    };
+  };
+  brand_alignment_json: {
+    overrides: Record<string, any>; // Brand rules that override market
+    adaptations: Record<string, any>; // How brand adapts market rules
+  };
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdTemplate = {
+  id: string;
+  project_id: string;
+  guideline_id: string | null;
+  name: string;
+  template_type: 'static_image' | 'carousel' | 'video_thumbnail';
+  platform: 'meta' | 'google' | 'tiktok' | 'instagram' | 'facebook';
+  layout_json: {
+    image_zones: Array<{
+      id: string;
+      position: string;
+      dimensions: string;
+      aspect_ratio?: string;
+    }>;
+    text_zones: Array<{
+      id: string;
+      type: 'headline' | 'hook' | 'body' | 'cta'; // Added 'hook'
+      max_chars: number;
+      position: string;
+      font_size?: string;
+      font_weight?: string;
+      color_variable?: string; // e.g., 'primary', 'text-on-dark'
+    }>;
+    cta_position: string;
+    safe_areas: {
+      top: number;
+      bottom: number;
+      left: number;
+      right: number;
+    };
+    required_contrast?: 'high' | 'medium';
+  };
+  style_rules_json: {
+    color_palette: string[];
+    font_hierarchy: Record<string, any>;
+    spacing_rules: Record<string, any>;
+  };
+  compatibility_map?: {
+    allowed_angles?: string[];
+    min_contrast?: string;
+  };
+  created_at: string;
+  updated_at: string;
+};
+
+export type GeneratedAd = {
+  id: string;
+  project_id: string;
+  template_id: string;
+  audience_segment_id: string | null;
+  product_id: string | null;
+  ad_type: 'image' | 'carousel' | 'video';
+  assets_json: {
+    image_url: string;
+    headline: string;
+    body_copy: string;
+    hook?: string; // Added hook
+    cta: string;
+    additional_images?: string[]; // For carousels
+    rendered_image_url?: string; // Final rendered ad
+  };
+  metadata_json: {
+    platform: string;
+    dimensions: string;
+    file_format: string;
+    aspect_ratio?: string;
+    strategy?: AdCreativeStrategy;
+    image_analysis?: ImageLayoutMap;
+    qa_results?: {
+      passed: boolean;
+      checks: Record<string, boolean>;
+      issues?: string[];
+    };
+  };
+  status: 'draft' | 'approved' | 'rejected' | 'archived'; // Added 'rejected'
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdGenerationJob = {
+  id: string;
+  project_id: string;
+  template_id: string;
+  audience_segment_id: string;
+  product_id: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  count: number;
+  generated_ads: GeneratedAd[];
+  error_message?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+};
+
+
+// ==========================================
+// Product Images System Examples
+// ==========================================
+
+export type ProductImageIntent = 'primary_hero' | 'gallery_lifestyle' | 'ad_creative' | 'thumbnail';
+
+export type BrandVisualIdentity = {
+  project_id: string;
+  lighting_weights: Record<string, number>; // e.g., { "softbox": 0.8, "natural": 0.2 }
+  composition_weights: Record<string, number>;
+  angle_weights: Record<string, number>;
+  color_grading: {
+    contrast: 'low' | 'medium' | 'high';
+    saturation: 'low' | 'medium' | 'high';
+    palette: string[];
+  };
+  approved_count: number;
+  confidence_score: number;
+  last_updated: string;
+};
+
+export type ProductImageGenerationConfig = {
+  product_id: string;
+  intent: ProductImageIntent;
+  aspect_ratio: string;
+  background_style?: string; // e.g. 'pure_white', 'luxury_living_room'
+  reference_image_url?: string;
+  exclude_elements?: string[];
+};
+
+export type ConversionScore = {
+  total: number; // 0-100
+  breakdown: {
+    clarity: number;        // Product visibility
+    brand_alignment: number; // Matches visual identity
+    technical: number;      // Sharpness, artifacts
+    composition: number;    // Rule of thirds etc
+  };
+  recommended_role?: ProductImageIntent;
+  confidence: number; // 0.0 - 1.0
+};
+
+export type ProductImageSession = {
+  id: string;
+  project_id: string;
+  product_id: string;
+  intent: ProductImageIntent;
+  status: 'planning' | 'generating' | 'completed' | 'failed';
+  generated_images: GeneratedImage[];
+  config_snapshot: ProductImageGenerationConfig;
+  created_at: string;
+};
+
+// Extending GeneratedImage (or MediaAsset) implicitly via usage, 
+// but we might want explicit types for the UI if they differ significantly.
+// For now, we can piggyback on MediaAsset metadata or create a specific view model.
 

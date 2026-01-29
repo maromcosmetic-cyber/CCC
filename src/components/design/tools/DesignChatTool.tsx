@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Bot, User, Sparkles, Paperclip, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProject } from "@/contexts/ProjectContext";
+
+// Client-only time display to avoid hydration errors
+function TimeDisplay({ timestamp }: { timestamp: Date }) {
+    const [mounted, setMounted] = useState(false);
+    
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+    
+    if (!mounted) {
+        return <span className="text-[10px] text-muted-foreground mt-1 px-1 opacity-70">--:--</span>;
+    }
+    
+    return (
+        <span className="text-[10px] text-muted-foreground mt-1 px-1 opacity-70">
+            {timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+        </span>
+    );
+}
 
 type Message = {
     id: string;
@@ -104,9 +123,7 @@ export default function DesignChatTool() {
                                         >
                                             {msg.content}
                                         </div>
-                                        <span className="text-[10px] text-muted-foreground mt-1 px-1 opacity-70">
-                                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        <TimeDisplay timestamp={msg.timestamp} />
                                     </div>
                                 </div>
                             ))}

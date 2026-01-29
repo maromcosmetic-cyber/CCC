@@ -25,7 +25,7 @@ export async function POST(
         .eq('id', companyProfileId)
         .eq('project_id', projectId)
         .single();
-      profile = data;
+      profile = data as any;
     } else {
       const { data } = await supabase
         .from('company_profiles')
@@ -34,7 +34,7 @@ export async function POST(
         .order('version', { ascending: false })
         .limit(1)
         .single();
-      profile = data;
+      profile = data as any;
     }
 
     if (!profile) {
@@ -44,6 +44,7 @@ export async function POST(
     // Lock the profile
     const { data: lockedProfile, error } = await supabase
       .from('company_profiles')
+      // @ts-ignore
       .update({
         locked_at: new Date().toISOString(),
         locked_by: userId,
@@ -63,16 +64,16 @@ export async function POST(
       source: 'ui',
       project_id: projectId,
       payload: {
-        company_profile_id: lockedProfile.id,
-        version: lockedProfile.version,
+        company_profile_id: (lockedProfile as any).id,
+        version: (lockedProfile as any).version,
       },
     });
 
     return NextResponse.json({
       company_profile: {
-        id: lockedProfile.id,
-        version: lockedProfile.version,
-        locked_at: lockedProfile.locked_at,
+        id: (lockedProfile as any).id,
+        version: (lockedProfile as any).version,
+        locked_at: (lockedProfile as any).locked_at,
       },
     });
   } catch (error) {

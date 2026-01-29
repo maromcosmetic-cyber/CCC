@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useProject } from "@/contexts/ProjectContext";
 import { useMetaIntegration } from "@/hooks/useMetaIntegration";
 import { ConnectAdsPrompt } from "@/components/studio/ConnectAdsPrompt";
+import { PageLoading } from "@/components/ui/page-loading";
 
 interface Project {
     id: string;
@@ -21,43 +22,20 @@ interface Project {
 
 export default function StudioOverview() {
     const router = useRouter();
-    const { currentProject } = useProject();
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    // Destructure projects from key context
+    const { currentProject, projects, loading: projectLoading } = useProject();
 
     // Check Integration Status
     const { isConnected, isLoading: isIntegrationLoading } = useMetaIntegration();
-
-    const fetchProjects = async () => {
-        try {
-            const response = await fetch('/api/projects');
-            if (!response.ok) {
-                throw new Error('Failed to fetch projects');
-            }
-            const data = await response.json();
-            setProjects(data.projects || []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load projects');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleCreateProject = () => {
         router.push('/projects/new');
     };
 
-    useEffect(() => {
-        fetchProjects();
-    }, []);
-
-    if (isIntegrationLoading) {
+    if (projectLoading || isIntegrationLoading) {
         return (
             <Shell>
-                <div className="flex items-center justify-center h-[60vh]">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                </div>
+                <PageLoading message={projectLoading ? "Loading project data..." : "Checking integration..."} />
             </Shell>
         );
     }
@@ -162,28 +140,7 @@ export default function StudioOverview() {
                         )}
                     </div>
 
-                    {loading && (
-                        <div className="text-center py-12">
-                            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                            <p className="mt-4 text-sm text-muted-foreground">Loading projects...</p>
-                        </div>
-                    )}
-
-                    {error && (
-                        <Card className="glass-card border-rose-500/30 bg-rose-500/5">
-                            <CardContent className="p-6">
-                                <div className="flex items-center gap-3">
-                                    <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    <div>
-                                        <p className="font-bold text-sm">Error loading projects</p>
-                                        <p className="text-xs text-muted-foreground">{error}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {!loading && !error && projects.length === 0 && (
+                    {projects.length === 0 && (
                         <Card className="glass-card border-dashed">
                             <CardContent className="p-12 text-center">
                                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -201,7 +158,7 @@ export default function StudioOverview() {
                         </Card>
                     )}
 
-                    {!loading && !error && projects.length > 0 && (
+                    {projects.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {projects.map(project => (
                                 <Card

@@ -9,6 +9,7 @@ export async function GET(
     try {
         const auth = await requireAuth(request);
         if (auth.response) return auth.response;
+        // console.log(`[API] Checking products for Project: ${params.id}`);
 
         const woo = await getWooCommerceClient(params.id);
 
@@ -18,18 +19,33 @@ export async function GET(
         const per_page = searchParams.get('per_page') || '20';
         const search = searchParams.get('search') || '';
 
-        const { data } = await woo.get('products', {
-            page: parseInt(page),
-            per_page: parseInt(per_page),
-            search: search
-        });
+        const queryParams: any = {
+            // page: parseInt(page),
+            // per_page: parseInt(per_page)
+        };
 
+        if (search) {
+            queryParams.search = search;
+        }
+
+        const { data } = await woo.get('products', queryParams);
+
+        console.log(`[API] Fetched ${data?.length} products`);
         return NextResponse.json(data);
     } catch (error: any) {
         console.error('WooCommerce API Error:', error);
+
+        let errorMessage = error.message || 'Failed to fetch products';
+        let status = 500;
+
+        if (errorMessage.includes('redirects exceeded')) {
+            errorMessage = 'Connection failed: The URL is causing too many redirects. Please check if your Store URL is correct (try adding or removing https:// or www).';
+            status = 400;
+        }
+
         return NextResponse.json(
-            { error: error.message || 'Failed to fetch products' },
-            { status: 500 }
+            { error: errorMessage },
+            { status: status }
         );
     }
 }

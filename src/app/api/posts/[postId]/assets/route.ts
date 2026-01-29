@@ -25,7 +25,7 @@ export async function POST(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    const projectId = (post.calendar_versions as any).project_id;
+    const projectId = ((post as any).calendar_versions as any).project_id;
 
     // Queue asset generation job
     const queue = await getQueueClient();
@@ -41,7 +41,7 @@ export async function POST(
       job_type: JOB_TYPES.GENERATE_ASSETS,
       job_data: { post_id: postId, asset_types: body.asset_types },
       status: 'pending',
-    }).select().single();
+    } as any).select().single();
 
     await logAuditEvent({
       event_type: 'asset_generation_triggered',
@@ -52,7 +52,7 @@ export async function POST(
     });
 
     return NextResponse.json({
-      job_id: jobRun?.id,
+      job_id: (jobRun as any)?.id,
       status: 'processing',
     });
   } catch (error) {

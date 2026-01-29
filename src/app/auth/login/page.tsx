@@ -27,25 +27,43 @@ export default function LoginPage() {
     }
 
     try {
-      const supabase = createClient();
+      // Use API route to handle login server-side (sets cookies properly)
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      if (!supabase) {
-        setError('Failed to initialize authentication client');
+      let response;
+      try {
+        response = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal,
+        });
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          setError('Request timed out. Please check your connection and try again.');
+        } else {
+          setError('Network error. Please check your connection and try again.');
+        }
         setLoading(false);
         return;
       }
 
-      // Use API route to handle login server-side (sets cookies properly)
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
+      clearTimeout(timeoutId);
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        setError('Invalid response from server. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok || result.error) {
         setError(result.error || 'Sign in failed');

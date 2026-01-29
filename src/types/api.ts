@@ -243,4 +243,59 @@ export type BotQueryResponse = {
   }>;
 };
 
+// Audience Image Generation API Types
+export type GenerateAudienceImagesRequest = {
+  product_ids: string[];
+  campaign_id?: string;
+  image_types?: Array<'product_only' | 'product_persona' | 'ugc_style'>;
+  variations_per_type?: number;
+  platform?: string;
+  funnel_stage?: string;
+  angle?: string;
+};
+
+export type GenerateAudienceImagesResponse = {
+  job_id: string;
+  status: string;
+  message?: string;
+};
+
+export type GenerateIndividualImageRequest = {
+  product_id: string;
+  image_type: 'product_only' | 'product_persona' | 'ugc_style';
+  campaign_id?: string;
+  platform?: string;
+  funnel_stage?: string;
+  angle?: string;
+};
+
+export type GenerateIndividualImageResponse = {
+  image_id: string;
+  storage_url: string;
+  status: string;
+};
+
+export type GetImageGenerationStatusResponse = {
+  generation: {
+    id: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    progress?: {
+      current: number;
+      total: number;
+      current_step?: string;
+    };
+    generated_images: Array<{
+      id: string;
+      image_type: string;
+      storage_url: string;
+      product_ids: string[];
+      created_at: string;
+    }>;
+    error_message?: string;
+    created_at: string;
+    started_at?: string;
+    completed_at?: string;
+  };
+};
+
 

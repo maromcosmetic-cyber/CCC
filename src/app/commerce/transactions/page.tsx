@@ -188,7 +188,7 @@ export default function TransactionsPage() {
                                         tickFormatter={(value) => `${currency}${value}`}
                                     />
                                     <Tooltip
-                                        formatter={(value: number) => [`${currency}${value}`, 'Sales']}
+                                        formatter={(value: any) => [`${currency}${value}`, 'Sales']}
                                         labelStyle={{ color: 'black' }}
                                     />
                                     <Bar

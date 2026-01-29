@@ -24,7 +24,7 @@ export async function POST(
         .eq('id', validated.company_profile_version_id)
         .eq('project_id', projectId)
         .single();
-      companyProfile = data;
+      companyProfile = data as any;
     } else {
       const { data } = await supabase
         .from('company_profiles')
@@ -34,7 +34,7 @@ export async function POST(
         .order('version', { ascending: false })
         .limit(1)
         .single();
-      companyProfile = data;
+      companyProfile = data as any;
     }
 
     if (!companyProfile || !companyProfile.locked_at) {
@@ -56,16 +56,16 @@ export async function POST(
     const { data: jobRun } = await supabase.from('job_runs').insert({
       project_id: projectId,
       job_type: JOB_TYPES.GENERATE_STRATEGY,
-      job_data: { company_profile_version_id: companyProfile.id },
+      job_data: { company_profile_version_id: (companyProfile as any).id },
       status: 'pending',
-    }).select().single();
+    } as any).select().single();
 
     await logAuditEvent({
       event_type: 'strategy_generation_triggered',
       actor_type: 'user',
       source: 'ui',
       project_id: projectId,
-      payload: { company_profile_version_id: companyProfile.id },
+      payload: { company_profile_version_id: (companyProfile as any).id },
     });
 
     // Poll for completion (in real implementation, use webhooks or polling)
@@ -73,7 +73,7 @@ export async function POST(
     return NextResponse.json({
       strategy_version_id: null, // Will be set when job completes
       status: 'processing',
-      job_id: jobRun?.id,
+      job_id: (jobRun as any)?.id,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {

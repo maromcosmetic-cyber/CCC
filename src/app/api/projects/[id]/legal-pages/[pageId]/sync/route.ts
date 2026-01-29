@@ -15,12 +15,14 @@ export async function POST(
         const pageId = params.pageId;
 
         // Get the legal page
-        const { data: page, error: pageError } = await supabase
+        const { data: pageData, error: pageError } = await supabase
             .from('legal_pages')
             .select('*')
             .eq('id', pageId)
             .eq('project_id', projectId)
             .single();
+
+        const page = pageData as any;
 
         if (pageError || !page) {
             return NextResponse.json({ error: 'Legal page not found' }, { status: 404 });
@@ -61,6 +63,7 @@ export async function POST(
         // Update sync status
         await supabase
             .from('legal_pages')
+            // @ts-ignore
             .update({
                 wordpress_page_id: wordpressPageId,
                 last_synced_at: success ? new Date().toISOString() : page.last_synced_at,

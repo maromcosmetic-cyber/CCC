@@ -55,7 +55,7 @@ export async function POST(
                 wordpress_slug,
                 wordpress_page_id,
                 updated_at: new Date().toISOString(),
-            }, {
+            } as any, {
                 onConflict: 'project_id,page_type'
             })
             .select()

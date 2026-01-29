@@ -6,17 +6,17 @@ import { ShoppingBag, Zap, Tag, Library } from "lucide-react";
 import Link from "next/link";
 import { ConnectStorePrompt } from "@/components/commerce/ConnectStorePrompt";
 import { useWooCommerceIntegration } from "@/hooks/useWooCommerceIntegration";
-import { Loader2 } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
+import { PageLoading } from "@/components/ui/page-loading";
 
 export default function CatalogOverviewPage() {
     const { isConnected, isLoading } = useWooCommerceIntegration();
+    const { loading: projectLoading } = useProject();
 
-    if (isLoading) {
+    if (projectLoading || isLoading) {
         return (
             <Shell>
-                <div className="flex items-center justify-center h-[50vh]">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
+                <PageLoading message={projectLoading ? "Loading project data..." : "Checking integration..."} />
             </Shell>
         );
     }

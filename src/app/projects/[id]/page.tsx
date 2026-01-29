@@ -1,15 +1,10 @@
-// Project Desktop Shell Page
+// Project page - redirect to brand identity
 
-'use client';
-
-import { useParams } from 'next/navigation';
-import { DesktopShell } from '@/components/desktop/DesktopShell';
+import { redirect } from 'next/navigation';
 
 export default function ProjectPage() {
-  const params = useParams();
-  const projectId = params.id as string;
-
-  return <DesktopShell projectId={projectId} />;
+  // Redirect to brand identity instead of showing desktop shell
+  redirect('/brand/identity');
 }
 
 

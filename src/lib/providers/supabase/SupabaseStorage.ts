@@ -35,18 +35,45 @@ export class SupabaseStorage implements StorageProvider {
     try {
       let fileData: File | Blob;
       
+      // Determine content type
+      let contentType = options?.contentType;
+      
+      // If no contentType provided, try to infer from path or default to image/png for image uploads
+      if (!contentType) {
+        const extension = path.split('.').pop()?.toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'webp': 'image/webp',
+          'gif': 'image/gif',
+          'mp4': 'video/mp4',
+          'webm': 'video/webm',
+          'html': 'text/html',
+          'json': 'application/json',
+          'pdf': 'application/pdf',
+        };
+        contentType = mimeTypes[extension || ''] || 'application/octet-stream';
+      }
+      
       if (file instanceof File) {
         fileData = file;
+        // Use file's MIME type if no contentType was provided
+        if (!contentType || contentType === 'application/octet-stream') {
+          contentType = file.type || contentType;
+        }
       } else if (Buffer.isBuffer(file)) {
-        fileData = new Blob([file]);
+        // Create Blob with explicit MIME type
+        fileData = new Blob([file], { type: contentType || 'application/octet-stream' });
       } else {
-        fileData = new Blob([file]);
+        // Create Blob with explicit MIME type
+        fileData = new Blob([file], { type: contentType || 'application/octet-stream' });
       }
 
       const { data, error } = await this.supabase.storage
         .from(bucket)
         .upload(path, fileData, {
-          contentType: options?.contentType,
+          contentType: contentType,
           cacheControl: options?.cacheControl || '3600',
           upsert: options?.upsert || false,
           metadata: options?.metadata,

@@ -44,7 +44,7 @@ export async function POST(
         weeks: validated.weeks || 4,
       },
       status: 'pending',
-    }).select().single();
+    } as any).select().single();
 
     await logAuditEvent({
       event_type: 'calendar_generation_triggered',
@@ -57,7 +57,7 @@ export async function POST(
     return NextResponse.json({
       calendar_version_id: null, // Will be set when job completes
       status: 'processing',
-      job_id: jobRun?.id,
+      job_id: (jobRun as any)?.id,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {

@@ -14,9 +14,11 @@ export function useWooCommerceIntegration() {
         const checkStatus = async () => {
             try {
                 const res = await fetch(`/api/projects/${currentProject.id}/integrations`);
+
                 if (res.ok) {
                     const data = await res.json();
                     const woo = data.integrations?.find((i: any) => i.provider_type === 'woocommerce');
+
                     if (mounted) {
                         // Check if it exists and status is active/connected
                         // Based on my previous code, 'active' is the status for user-managed integrations

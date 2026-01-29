@@ -46,7 +46,7 @@ export default function AdCanvas({
         const initCanvas = async () => {
             // Dynamic import to avoid SSR issues
             const fabricModule = await import('fabric');
-            const fabric = fabricModule.fabric || fabricModule;
+            const fabric = (fabricModule as any).fabric || fabricModule;
 
             const canvas = new fabric.Canvas(canvasRef.current, {
                 width,
@@ -77,7 +77,7 @@ export default function AdCanvas({
         // Load Image
         const canvas = fabricRef.current;
         import('fabric').then((mod) => {
-            const fabric = mod.fabric || mod;
+            const fabric = (mod as any).fabric || mod;
             fabric.Image.fromURL(backgroundImage, (img: any) => {
                 if (!img) return;
                 // Scale to cover
@@ -104,7 +104,7 @@ export default function AdCanvas({
         if (!fabricRef.current || !isReady || initialLayers.length === 0) return;
 
         import('fabric').then((mod) => {
-            const fabric = mod.fabric || mod;
+            const fabric = (mod as any).fabric || mod;
             const canvas = fabricRef.current;
 
             initialLayers.forEach(layer => {
@@ -130,7 +130,7 @@ export default function AdCanvas({
     const addText = async () => {
         if (!fabricRef.current) return;
         const mod = await import('fabric');
-        const fabric = mod.fabric || mod;
+        const fabric = (mod as any).fabric || mod;
 
         const text = new fabric.Textbox('New Text', {
             left: width / 2 - 75,

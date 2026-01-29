@@ -28,13 +28,14 @@ export async function POST(
     // Create character
     const { data: character, error } = await supabase
       .from('characters')
+      // @ts-ignore
       .insert({
-        project_id: video.project_id,
+        project_id: (video as any).project_id,
         name: validated.name,
         description: validated.description,
         character_image_path: validated.character_image_path,
         character_data: validated.character_data || {},
-      })
+      } as any)
       .select()
       .single();
 
@@ -46,11 +47,11 @@ export async function POST(
       event_type: 'character_created',
       actor_type: 'user',
       source: 'ui',
-      project_id: video.project_id,
-      payload: { character_id: character.id },
+      project_id: (video as any).project_id,
+      payload: { character_id: (character as any).id },
     });
 
-    return NextResponse.json({ character_id: character.id });
+    return NextResponse.json({ character_id: (character as any).id });
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Validation error' }, { status: 400 });

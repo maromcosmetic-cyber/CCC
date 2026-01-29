@@ -1,0 +1,205 @@
+// This file contains the cross-competitor insights display component
+// It will be inserted into the main competitors page
+
+{/* Cross-Competitor Insights Display */}
+{crossInsights ? (
+    <Card className="h-full flex flex-col">
+        <div className="p-6 border-b bg-gradient-to-r from-purple-50 to-pink-50">
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold">📊 Cross-Competitor Analysis</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Strategic insights from {competitors.length} competitors
+                    </p>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCrossInsights(null)}
+                >
+                    <X className="w-4 h-4 mr-1" />
+                    Close
+                </Button>
+            </div>
+        </div>
+
+        <ScrollArea className="flex-1 p-6">
+            <div className="space-y-8">
+                {/* Strategic Insights Banner */}
+                <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-purple-700">
+                            <Lightbulb className="w-5 h-5" /> Strategic Insights
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <strong className="text-purple-700">Market Landscape:</strong>
+                            <p className="text-sm mt-1">{crossInsights.strategic_insights.market_landscape}</p>
+                        </div>
+                        <div>
+                            <strong className="text-purple-700">Competitive Positioning Advice:</strong>
+                            <p className="text-sm mt-1">{crossInsights.strategic_insights.competitive_positioning_advice}</p>
+                        </div>
+                        <div>
+                            <strong className="text-purple-700">Differentiation Opportunities:</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                                {crossInsights.strategic_insights.differentiation_opportunities.map((opp, i) => (
+                                    <li key={i}>{opp}</li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div>
+                            <strong className="text-red-600">Threats to Address:</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                                {crossInsights.strategic_insights.threats_to_address.map((threat, i) => (
+                                    <li key={i}>{threat}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Recommended Actions */}
+                <div>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-yellow-600" /> Recommended Actions
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                        {crossInsights.recommended_actions.map((action, i) => (
+                            <Card key={i} className={`border-l-4 ${
+                                action.priority === 'High' ? 'border-l-red-500 bg-red-50/50' :
+                                action.priority === 'Medium' ? 'border-l-yellow-500 bg-yellow-50/50' :
+                                'border-l-blue-500 bg-blue-50/50'
+                            }`}>
+                                <CardContent className="p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Badge variant={action.priority === 'High' ? 'destructive' : action.priority === 'Medium' ? 'default' : 'secondary'}>
+                                                    {action.priority} Priority
+                                                </Badge>
+                                                <Badge variant="outline" className="text-xs">
+                                                    {action.implementation_difficulty}
+                                                </Badge>
+                                            </div>
+                                            <h4 className="font-semibold text-sm mb-1">{action.action}</h4>
+                                            <p className="text-xs text-muted-foreground mb-2">{action.rationale}</p>
+                                            <p className="text-xs text-green-700 font-medium">Expected: {action.expected_outcome}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Winning Campaigns */}
+                <div>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Award className="w-5 h-5 text-yellow-600" /> Top Winning Campaigns
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                        {crossInsights.winning_campaigns.map((campaign, i) => (
+                            <Card key={i} className="border-yellow-100 bg-gradient-to-br from-yellow-50/50 to-orange-50/50">
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-start justify-between">
+                                        <CardTitle className="text-base">{campaign.competitor_name}</CardTitle>
+                                        <Badge variant="outline" className="bg-white">#{i + 1}</Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div>
+                                        <span className="text-xs uppercase font-bold text-muted-foreground">Campaign</span>
+                                        <p className="text-sm mt-1">{campaign.campaign_description}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs uppercase font-bold text-green-600">Why It Worked</span>
+                                        <p className="text-sm mt-1">{campaign.why_successful}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs uppercase font-bold text-muted-foreground">Key Tactics</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {campaign.key_tactics.map((tactic, idx) => (
+                                                <Badge key={idx} variant="secondary" className="text-xs">{tactic}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 border-t">
+                                        <span className="text-xs uppercase font-bold text-purple-600">How to Apply</span>
+                                        <p className="text-sm mt-1 text-purple-800">{campaign.applicability_to_your_brand}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Success Patterns */}
+                <div>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Target className="w-5 h-5 text-blue-600" /> Success Patterns
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        {crossInsights.success_patterns.map((pattern, i) => (
+                            <Card key={i}>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">{pattern.pattern_name}</CardTitle>
+                                    <CardDescription className="text-xs">{pattern.frequency}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <p className="text-xs">{pattern.description}</p>
+                                    <div>
+                                        <span className="text-xs font-semibold">Used by:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {pattern.competitors_using.map((comp, idx) => (
+                                                <Badge key={idx} variant="outline" className="text-[10px]">{comp}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 border-t">
+                                        <span className="text-xs font-semibold text-indigo-600">Implementation:</span>
+                                        <p className="text-xs mt-1">{pattern.recommended_implementation}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Market Opportunities */}
+                <div>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Rocket className="w-5 h-5 text-green-600" /> Market Opportunities
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                        {crossInsights.market_opportunities.map((opp, i) => (
+                            <Card key={i} className="border-green-100 bg-green-50/30">
+                                <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <h4 className="font-semibold text-sm">{opp.opportunity}</h4>
+                                        <Badge variant={
+                                            opp.potential_impact === 'High' ? 'default' :
+                                            opp.potential_impact === 'Medium' ? 'secondary' : 'outline'
+                                        } className="text-xs">
+                                            {opp.potential_impact} Impact
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mb-3">{opp.gap_identified}</p>
+                                    <div>
+                                        <span className="text-xs font-semibold text-green-700">Action Steps:</span>
+                                        <ol className="list-decimal list-inside mt-1 space-y-1 text-xs">
+                                            {opp.action_steps.map((step, idx) => (
+                                                <li key={idx}>{step}</li>
+                                            ))}
+                                        </ol>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </ScrollArea>
+    </Card>
+) : null}

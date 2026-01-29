@@ -22,12 +22,13 @@ export default function SubscribersPage() {
     }, [currentProject]);
 
     const fetchSubscribers = async () => {
+        if (!currentProject?.id) return;
         setLoading(true);
         const supabase = createClient();
         const { data, error } = await supabase
             .from('email_subscribers')
             .select('*')
-            .eq('project_id', currentProject?.id)
+            .eq('project_id', currentProject.id)
             .order('created_at', { ascending: false });
 
         if (error) {

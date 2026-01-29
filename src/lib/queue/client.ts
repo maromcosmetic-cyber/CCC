@@ -1,21 +1,21 @@
-// pg-boss queue client setup
+// Queue client for pg-boss
 
 import PgBoss from 'pg-boss';
 
-let boss: PgBoss | null = null;
+let bossInstance: PgBoss | null = null;
 
 export async function getQueueClient(): Promise<PgBoss> {
-  if (boss) {
-    return boss;
+  if (bossInstance) {
+    return bossInstance;
   }
 
   const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
-  
+
   if (!connectionString) {
-    throw new Error('DATABASE_URL or SUPABASE_DB_URL must be provided for pg-boss');
+    throw new Error('DATABASE_URL or SUPABASE_DB_URL must be provided');
   }
 
-  boss = new PgBoss({
+  bossInstance = new PgBoss({
     connectionString,
     schema: 'pgboss',
     retryLimit: 3,
@@ -24,16 +24,7 @@ export async function getQueueClient(): Promise<PgBoss> {
     deleteAfterHours: 24,
   });
 
-  await boss.start();
+  await bossInstance.start();
 
-  return boss;
+  return bossInstance;
 }
-
-export async function closeQueueClient(): Promise<void> {
-  if (boss) {
-    await boss.stop();
-    boss = null;
-  }
-}
-
-

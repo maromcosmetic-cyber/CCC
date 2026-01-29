@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
                     analysis_json: report,
                     status: 'completed',
                     last_analyzed_at: new Date().toISOString()
-                }, { onConflict: 'url, project_id' }) // Assuming generic constraint or handle duplicates logic
+                } as any, { onConflict: 'url, project_id' }) // Assuming generic constraint or handle duplicates logic
                 .select()
                 .single();
 

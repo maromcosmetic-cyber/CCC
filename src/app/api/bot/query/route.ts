@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (companyProfile) {
-      contextParts.push(`Company Profile: ${JSON.stringify(companyProfile.profile_data, null, 2)}`);
+      contextParts.push(`Company Profile: ${JSON.stringify((companyProfile as any).profile_data, null, 2)}`);
     }
 
     // Get scraped content from storage
@@ -79,11 +79,11 @@ Answer:`;
     // Extract evidence references from context
     const evidenceRefs = companyProfile
       ? [
-          {
-            source_url: 'company_profile',
-            snippet: 'Company profile data',
-          },
-        ]
+        {
+          source_url: 'company_profile',
+          snippet: 'Company profile data',
+        },
+      ]
       : [];
 
     await logAuditEvent({

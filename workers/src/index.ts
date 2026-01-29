@@ -8,6 +8,8 @@ import { generateStrategyJob } from '../../src/lib/workers/strategy';
 import { generateCalendarJob } from '../../src/lib/workers/calendar';
 import { generateAssetsJob } from '../../src/lib/workers/assets';
 import { generateUGCVideoJob } from '../../src/lib/workers/ugc-video';
+import { generateAudienceImagesJob } from '../../src/lib/workers/audience-image-generation';
+import { generateAdsJob } from '../../src/lib/workers/ad-generation';
 import { JOB_TYPES } from '../../src/lib/queue/jobs';
 
 const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
@@ -59,6 +61,16 @@ boss.work(JOB_TYPES.GENERATE_ASSETS, async (job) => {
 boss.work(JOB_TYPES.GENERATE_UGC_VIDEO, async (job) => {
   console.log(`Processing ${JOB_TYPES.GENERATE_UGC_VIDEO} job:`, job.id);
   await generateUGCVideoJob(job.data as any);
+});
+
+boss.work(JOB_TYPES.GENERATE_AUDIENCE_IMAGES, async (job) => {
+  console.log(`Processing ${JOB_TYPES.GENERATE_AUDIENCE_IMAGES} job:`, job.id);
+  await generateAudienceImagesJob(job.data as any);
+});
+
+boss.work(JOB_TYPES.GENERATE_ADS, async (job) => {
+  console.log(`Processing ${JOB_TYPES.GENERATE_ADS} job:`, job.id);
+  await generateAdsJob(job.data as any);
 });
 
 // Start the worker

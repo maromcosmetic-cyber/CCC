@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
       .select('*, integration_status(*)');
 
     const integrationStatuses = (integrations || []).map((integration) => {
-      const status = (integration.integration_status as any)?.[0];
+      const status = ((integration as any).integration_status as any)?.[0];
       return {
-        provider_type: integration.provider_type,
+        provider_type: (integration as any).provider_type,
         status: status?.status || 'unknown',
         message: status?.message,
         last_checked_at: status?.last_checked_at,

@@ -9,9 +9,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Sparkles, Wand2, Upload, Loader2, RefreshCw } from "lucide-react";
 import { useProject } from "@/contexts/ProjectContext";
 import { useState } from "react";
+import { PageLoading } from "@/components/ui/page-loading";
 
 export default function CharacterStudioPage() {
-    const { currentProject } = useProject();
+    const { currentProject, loading } = useProject();
+    
+    if (loading) {
+        return (
+            <Shell>
+                <PageLoading message="Loading project data..." />
+            </Shell>
+        );
+    }
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 

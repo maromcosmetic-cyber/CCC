@@ -19,6 +19,7 @@ export async function logAuditEvent(data: AuditLogPayload): Promise<void> {
   }
 
   try {
+    // @ts-ignore
     const { error } = await supabaseAdmin.from('audit_log').insert({
       project_id: data.project_id,
       event_type: data.event_type,

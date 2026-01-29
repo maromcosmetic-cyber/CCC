@@ -56,6 +56,41 @@ export interface UGCVideoJobData {
   };
 }
 
+export interface AudienceImageGenerationJobData {
+  project_id: string;
+  generation_id: string;
+  audience_id: string;
+  product_ids: string[];
+  campaign_id?: string;
+  image_types?: Array<'product_only' | 'product_persona' | 'ugc_style'>;
+  variations_per_type?: number | {
+    product_only?: number;
+    product_persona?: number;
+    ugc_style?: number;
+  };
+  platform?: string;
+  funnel_stage?: string;
+  angle?: string;
+}
+
+export interface AdGenerationJobData {
+  project_id: string;
+  job_id: string;
+  template_id: string;
+  audience_segment_id: string;
+  image_id: string;
+  image_url: string;
+  image_path?: string;
+  image_bucket?: string;
+  headline?: string | null;
+  body_copy?: string | null;
+  hook?: string | null;
+  cta?: string | null;
+  layout_changes?: any | null;
+  product_id?: string | null; // Legacy support
+  count?: number; // Legacy support, defaults to 1
+}
+
 export type JobData =
   | ScrapeJobData
   | CompanyProfileJobData
@@ -63,7 +98,9 @@ export type JobData =
   | StrategyJobData
   | CalendarJobData
   | AssetsJobData
-  | UGCVideoJobData;
+  | UGCVideoJobData
+  | AudienceImageGenerationJobData
+  | AdGenerationJobData;
 
 export const JOB_TYPES = {
   RUN_SCRAPE: 'run_scrape',
@@ -73,6 +110,8 @@ export const JOB_TYPES = {
   GENERATE_CALENDAR: 'generate_calendar',
   GENERATE_ASSETS: 'generate_assets',
   GENERATE_UGC_VIDEO: 'generate_ugc_video',
+  GENERATE_AUDIENCE_IMAGES: 'generate_audience_images',
+  GENERATE_ADS: 'generate_ads',
 } as const;
 
 export type JobType = typeof JOB_TYPES[keyof typeof JOB_TYPES];

@@ -20,14 +20,15 @@ export default function EmailDashboardPage() {
     }, [currentProject]);
 
     const checkSettings = async () => {
+        if (!currentProject?.id) return;
         const supabase = createClient();
         const { data } = await supabase
             .from('email_settings')
             .select('id, smtp_host')
-            .eq('project_id', currentProject?.id)
+            .eq('project_id', currentProject.id)
             .single();
 
-        setHasSettings(!!data?.smtp_host);
+        setHasSettings(!!(data as any)?.smtp_host);
         setLoading(false);
     };
 

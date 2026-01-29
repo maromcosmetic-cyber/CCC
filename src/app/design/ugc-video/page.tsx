@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Check, Play, MapPin, User, FileText, ShoppingBag, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Play, MapPin, User, FileText, ShoppingBag, Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useProject } from "@/contexts/ProjectContext";
+import { PageLoading } from "@/components/ui/page-loading";
 
 const STEPS = [
     { id: 1, name: 'Location', icon: MapPin },
@@ -22,7 +23,15 @@ const STEPS = [
 
 export default function UGCVideoPage() {
     const router = useRouter();
-    const { currentProject } = useProject();
+    const { currentProject, loading } = useProject();
+    
+    if (loading) {
+        return (
+            <Shell>
+                <PageLoading message="Loading project data..." />
+            </Shell>
+        );
+    }
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
@@ -92,8 +101,8 @@ export default function UGCVideoPage() {
                                 <div key={step.id} className="flex flex-col items-center gap-2 bg-background p-2">
                                     <div
                                         className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive
-                                                ? 'bg-purple-600 border-purple-600 text-white'
-                                                : 'bg-background border-muted text-muted-foreground'
+                                            ? 'bg-purple-600 border-purple-600 text-white'
+                                            : 'bg-background border-muted text-muted-foreground'
                                             }`}
                                     >
                                         <step.icon className="w-5 h-5" />

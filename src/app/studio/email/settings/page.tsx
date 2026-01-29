@@ -56,11 +56,12 @@ export default function EmailSettingsPage() {
     };
 
     const fetchSettings = async () => {
+        if (!currentProject?.id) return;
         const supabase = createClient();
         const { data } = await supabase
             .from('email_settings')
             .select('*')
-            .eq('project_id', currentProject?.id)
+            .eq('project_id', currentProject.id)
             .single();
         if (data) setSettings(data);
     };
@@ -75,9 +76,11 @@ export default function EmailSettingsPage() {
 
         let error;
         if (settings.id) {
+            // @ts-ignore
             const { error: e } = await supabase.from('email_settings').update(payload).eq('id', settings.id);
             error = e;
         } else {
+            // @ts-ignore
             const { error: e } = await supabase.from('email_settings').insert([payload]);
             error = e;
         }

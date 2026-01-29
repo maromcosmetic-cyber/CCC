@@ -27,21 +27,21 @@ export async function GET(
       .eq('ugc_video_id', videoId)
       .order('created_at', { ascending: true });
 
-    const currentStep = jobs?.find((j) => j.status === 'running');
+    const currentStep = (jobs as any)?.find((j: any) => j.status === 'running');
     const progress = currentStep
       ? {
-          step: currentStep.step,
-          status: currentStep.status,
-        }
+        step: currentStep.step,
+        status: currentStep.status,
+      }
       : undefined;
 
     return NextResponse.json({
       video: {
-        id: video.id,
-        status: video.status,
-        storage_url: video.storage_url,
+        id: (video as any).id,
+        status: (video as any).status,
+        storage_url: (video as any).storage_url,
         progress,
-        video_duration_seconds: video.video_duration_seconds,
+        video_duration_seconds: (video as any).video_duration_seconds,
       },
     });
   } catch (error) {

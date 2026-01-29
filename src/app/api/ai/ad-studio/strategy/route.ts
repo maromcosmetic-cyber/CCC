@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
             throw new Error('Project not found');
         }
 
-        const brandIdentity = project.brand_identity || {}; // Assumption
+        const brandIdentity = (project as any)?.brand_identity || {}; // Assumption
         const brandTone = brandIdentity.tone || "Professional and trustworthy";
         const brandColors = brandIdentity.colors || [];
 

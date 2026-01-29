@@ -2,8 +2,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Shell } from "@/components/layout/Shell";
 import { useProject } from "@/contexts/ProjectContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLoading } from "@/components/ui/page-loading";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +18,15 @@ import AdCanvas from "@/components/design/AdCanvas";
 import { toast } from "sonner";
 
 export default function AdStudioPage() {
-    const { currentProject } = useProject();
+    const { currentProject, loading } = useProject();
+    
+    if (loading) {
+        return (
+            <Shell>
+                <PageLoading message="Loading project data..." />
+            </Shell>
+        );
+    }
     const [activeTab, setActiveTab] = useState("strategy");
 
     // Strategy State

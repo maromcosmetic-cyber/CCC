@@ -18,6 +18,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ConnectStorePrompt } from "@/components/commerce/ConnectStorePrompt";
 import { useWooCommerceIntegration } from "@/hooks/useWooCommerceIntegration";
+import { PageLoading } from "@/components/ui/page-loading";
+import { EditProductModal } from "@/components/commerce/EditProductModal";
 
 interface Product {
     id: number;
@@ -30,14 +32,17 @@ interface Product {
     stock_status: string;
     images: { src: string }[];
     status: string;
+    meta_data?: { id: number; key: string; value: string }[];
 }
 
 export default function ProductsPage() {
-    const { currentProject } = useProject();
+    const { currentProject, loading: projectLoading } = useProject();
     const { isConnected, isLoading: isAuthLoading } = useWooCommerceIntegration();
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const fetchProducts = async () => {
         if (!currentProject) return;
@@ -67,13 +72,11 @@ export default function ProductsPage() {
         }
     }, [currentProject, isConnected]);
 
-    // Show loading while checking connection
-    if (isAuthLoading) {
+    // Show loading while checking connection or project loading
+    if (projectLoading || isAuthLoading) {
         return (
             <Shell>
-                <div className="flex items-center justify-center h-[50vh]">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
+                <PageLoading message={projectLoading ? "Loading project data..." : "Checking integration..."} />
             </Shell>
         );
     }
@@ -198,11 +201,25 @@ export default function ProductsPage() {
                                                 <TableCell>
                                                     {product.sale_price ? (
                                                         <div className="flex flex-col">
-                                                            <span className="text-red-500 font-bold">${product.sale_price}</span>
-                                                            <span className="text-xs line-through text-muted-foreground">${product.regular_price}</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-red-500 font-bold">฿{product.sale_price}</span>
+                                                                <span className="text-xs line-through text-muted-foreground">฿{product.regular_price}</span>
+                                                            </div>
+                                                            {product.meta_data?.find(m => m.key === 'price_ils')?.value && (
+                                                                <span className="text-[10px] text-muted-foreground font-medium">
+                                                                    ₪{product.meta_data.find(m => m.key === 'price_ils')?.value}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     ) : (
-                                                        <span>${product.price}</span>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">฿{product.price}</span>
+                                                            {product.meta_data?.find(m => m.key === 'price_ils')?.value && (
+                                                                <span className="text-[10px] text-muted-foreground font-medium">
+                                                                    ₪{product.meta_data.find(m => m.key === 'price_ils')?.value}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
@@ -212,7 +229,16 @@ export default function ProductsPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm">Edit</Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setEditingProduct(product);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -223,6 +249,19 @@ export default function ProductsPage() {
                     </>
                 )}
             </div>
+
+            {currentProject && (
+                <EditProductModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setEditingProduct(null);
+                    }}
+                    product={editingProduct}
+                    projectId={currentProject.id}
+                    onSuccess={fetchProducts}
+                />
+            )}
         </Shell>
     );
 }

@@ -28,7 +28,7 @@ export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     // Get default tab from URL or default to 'general'
-    const defaultTab = searchParams.get('tab') || 'general';
+    const defaultTab = searchParams?.get('tab') || 'general';
     const [activeTab, setActiveTab] = useState(defaultTab);
 
     useEffect(() => {
@@ -38,7 +38,7 @@ export default function SettingsPage() {
     }, [currentProject?.id]);
 
     useEffect(() => {
-        const tab = searchParams.get('tab');
+        const tab = searchParams?.get('tab');
         if (tab) setActiveTab(tab);
     }, [searchParams]);
 
@@ -77,17 +77,18 @@ export default function SettingsPage() {
     };
 
     const fetchSettings = async () => {
+        if (!currentProject?.id) return;
         setLoading(true);
         const supabase = createClient();
         const { data } = await supabase
             .from('email_settings')
             .select('*')
-            .eq('project_id', currentProject?.id)
+            .eq('project_id', currentProject.id)
             .single();
 
         if (data) {
             // Merge with existing state to avoid overwriting partial inputs if any
-            setSettings(prev => ({ ...prev, ...data }));
+            setSettings((prev: any) => ({ ...prev, ...(data as any) }));
         }
         setLoading(false);
     };

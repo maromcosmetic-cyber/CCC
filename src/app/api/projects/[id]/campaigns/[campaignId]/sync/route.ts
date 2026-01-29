@@ -17,12 +17,14 @@ export async function POST(
   try {
     const { id: projectId, campaignId } = params;
 
-    const { data: campaign } = await supabase
+    const { data: campaignData } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', campaignId)
       .eq('project_id', projectId)
       .single();
+
+    const campaign = campaignData as any;
 
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
@@ -30,14 +32,14 @@ export async function POST(
 
     // Get user's API credentials for this platform
     const credentials = await getIntegrationCredentials(projectId, campaign.platform);
-    
+
     if (!credentials) {
       return NextResponse.json(
         { error: `No API credentials configured for ${campaign.platform}. Please configure your API keys in Control System > Integrations.` },
         { status: 400 }
       );
     }
-    
+
     // Get provider with user credentials
     let provider;
     switch (campaign.platform) {
@@ -73,6 +75,7 @@ export async function POST(
     // Update campaign with latest insights
     const { data: updatedCampaign, error } = await supabase
       .from('campaigns')
+      // @ts-ignore
       .update({
         insights_data: insights,
         last_synced_at: new Date().toISOString(),

@@ -1,0 +1,75 @@
+
+// Customer Personas Section
+function PersonasSection({ personas }: { personas?: any }) {
+    if (!personas || (!personas.primary?.name && !personas.secondary?.name && !personas.aspirational?.name)) {
+        return (
+            <section className="mb-10 page-break-inside-avoid">
+                <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-indigo-200">
+                    <Users className="w-5 h-5 text-indigo-600 mt-1" />
+                    <div className="flex-1">
+                        <h2 className="text-xl font-bold">3.5. Customer Personas</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Deep psychological profiles of target customers</p>
+                    </div>
+                </div>
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="p-6 text-center">
+                        <p className="text-amber-800 mb-2"><strong>👤 No personas created yet</strong></p>
+                        <p className="text-sm text-amber-700">Go to the <strong>Personas</strong> page to create detailed customer profiles.</p>
+                    </CardContent>
+                </Card>
+            </section>
+        );
+    }
+
+    const personaTypes = [
+        { key: 'primary', label: 'Primary Persona', color: 'red', description: 'Revenue Driver' },
+        { key: 'secondary', label: 'Secondary Persona', color: 'blue', description: 'Growth Segment' },
+        { key: 'aspirational', label: 'Aspirational Persona', color: 'purple', description: 'Future Target' }
+    ];
+
+    return (
+        <section className="mb-10 page-break-before">
+            <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-indigo-200">
+                <Users className="w-5 h-5 text-indigo-600 mt-1" />
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold">3.5. Customer Personas</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Deep psychological profiles of target customers</p>
+                </div>
+            </div>
+            <div className="space-y-6">
+                {personaTypes.map(({ key, label, color, description }) => {
+                    const persona = personas[key];
+                    if (!persona?.name) return null;
+                    return (
+                        <Card key={key} className={\`border-2 border-\${color}-300 page-break-inside-avoid\`}>
+                            <CardHeader className={\`bg-gradient-to-r from-\${color}-50 to-\${color}-100 border-b-2\`}>
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-lg">{persona.name}</CardTitle>
+                                        <p className="text-sm text-muted-foreground mt-1">{persona.tagline}</p>
+                                    </div>
+                                    <div className="flex flex-col gap-1 items-end">
+                                        <Badge variant="outline" className="text-xs">{label}</Badge>
+                                        <Badge variant="secondary" className="text-xs">{description}</Badge>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pt-4">
+                                {persona.demographics && (<div className="pl-4 border-l-2 border-gray-200"><p className="text-xs font-semibold text-indigo-600 uppercase mb-2 tracking-wide">Demographics</p><div className="grid grid-cols-2 gap-2 text-xs">{persona.demographics.age && <p><strong>Age:</strong> {persona.demographics.age}</p>}{persona.demographics.location && <p><strong>Location:</strong> {persona.demographics.location}</p>}{persona.demographics.income && <p><strong>Income:</strong> {persona.demographics.income}</p>}{persona.demographics.role && <p><strong>Role:</strong> {persona.demographics.role}</p>}</div></div>)}
+                                {persona.identity_drivers && (<div className="pl-4 border-l-2 border-purple-200"><p className="text-xs font-semibold text-purple-600 uppercase mb-2 tracking-wide">Identity Drivers</p><p className="text-sm">{persona.identity_drivers}</p></div>)}
+                                {persona.emotional_triggers?.length > 0 && (<div className="pl-4 border-l-2 border-red-200"><p className="text-xs font-semibold text-red-600 uppercase mb-2 tracking-wide">Emotional Triggers</p><ul className="list-disc list-inside text-sm space-y-1">{persona.emotional_triggers.filter((t: string) => t).map((trigger: string, i: number) => (<li key={i}>{trigger}</li>))}</ul></div>)}
+                                {persona.fears_anxieties?.length > 0 && (<div className="pl-4 border-l-2 border-yellow-200"><p className="text-xs font-semibold text-yellow-700 uppercase mb-2 tracking-wide">Fears & Anxieties</p><ul className="list-disc list-inside text-sm space-y-1">{persona.fears_anxieties.filter((f: string) => f).map((fear: string, i: number) => (<li key={i}>{fear}</li>))}</ul></div>)}
+                                {persona.desires_dreams?.length > 0 && (<div className="pl-4 border-l-2 border-green-200"><p className="text-xs font-semibold text-green-600 uppercase mb-2 tracking-wide">Desires & Dreams</p><ul className="list-disc list-inside text-sm space-y-1">{persona.desires_dreams.filter((d: string) => d).map((desire: string, i: number) => (<li key={i}>{desire}</li>))}</ul></div>)}
+                                {persona.language_style && (<div className="pl-4 border-l-2 border-blue-200"><p className="text-xs font-semibold text-blue-600 uppercase mb-2 tracking-wide">Language Style</p><p className="text-sm">{persona.language_style}</p></div>)}
+                                {persona.content_behavior && (<div className="pl-4 border-l-2 border-indigo-200"><p className="text-xs font-semibold text-indigo-600 uppercase mb-2 tracking-wide">Content Consumption</p><p className="text-sm">{persona.content_behavior}</p></div>)}
+                                {persona.buying_objections?.length > 0 && (<div className="pl-4 border-l-2 border-orange-200"><p className="text-xs font-semibold text-orange-600 uppercase mb-2 tracking-wide">Buying Objections</p><ul className="list-disc list-inside text-sm space-y-1">{persona.buying_objections.filter((o: string) => o).map((objection: string, i: number) => (<li key={i}>{objection}</li>))}</ul></div>)}
+                                {persona.decision_logic && (<div className="pl-4 border-l-2 border-pink-200"><p className="text-xs font-semibold text-pink-600 uppercase mb-2 tracking-wide">Decision Logic</p><p className="text-sm">{persona.decision_logic}</p></div>)}
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+

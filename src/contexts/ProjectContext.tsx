@@ -36,7 +36,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         setCurrentProjectState(updated);
         // Optimistically update projects list too
         setProjects(prev => prev.map(p => p.id === currentProject.id ? updated : p));
-        
+
         try {
             // Persist to DB
             await fetch(`/api/projects/${currentProject.id}`, {
@@ -44,7 +44,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ brand_identity: data }),
             });
-            
+
             // Clear local storage if it exists (cleanup)
             localStorage.removeItem(`brandContent_${currentProject.id}`);
         } catch (error) {
@@ -57,6 +57,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     const fetchProjects = async () => {
         try {
             const response = await fetch('/api/projects');
+
             if (response.ok) {
                 const data = await response.json();
                 // Map brand_identity (DB) to brandIdentity (State)

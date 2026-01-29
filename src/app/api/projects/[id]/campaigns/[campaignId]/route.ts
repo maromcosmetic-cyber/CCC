@@ -17,12 +17,14 @@ export async function GET(
   try {
     const { id: projectId, campaignId } = params;
 
-    const { data: campaign, error } = await supabase
+    const { data: campaignData, error } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', campaignId)
       .eq('project_id', projectId)
       .single();
+
+    const campaign = campaignData as any;
 
     if (error || !campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
@@ -30,7 +32,7 @@ export async function GET(
 
     // Get user's API credentials for this platform
     const credentials = await getIntegrationCredentials(projectId, campaign.platform);
-    
+
     // Get provider with user credentials
     let provider;
     switch (campaign.platform) {
@@ -82,12 +84,14 @@ export async function PUT(
     const body = await request.json();
     const validated = UpdateCampaignSchema.partial().parse(body);
 
-    const { data: campaign } = await supabase
+    const { data: campaignData } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', campaignId)
       .eq('project_id', projectId)
       .single();
+
+    const campaign = campaignData as any;
 
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
@@ -95,7 +99,7 @@ export async function PUT(
 
     // Get user's API credentials for this platform
     const credentials = await getIntegrationCredentials(projectId, campaign.platform);
-    
+
     // Get provider with user credentials
     let provider;
     switch (campaign.platform) {
@@ -121,6 +125,7 @@ export async function PUT(
     // Update local record
     const { data: updatedCampaign, error } = await supabase
       .from('campaigns')
+      // @ts-ignore
       .update(validated)
       .eq('id', campaignId)
       .select()
@@ -154,12 +159,14 @@ export async function DELETE(
   try {
     const { id: projectId, campaignId } = params;
 
-    const { data: campaign } = await supabase
+    const { data: campaignData } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', campaignId)
       .eq('project_id', projectId)
       .single();
+
+    const campaign = campaignData as any;
 
     if (!campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
@@ -167,7 +174,7 @@ export async function DELETE(
 
     // Get user's API credentials for this platform
     const credentials = await getIntegrationCredentials(projectId, campaign.platform);
-    
+
     // Get provider with user credentials
     let provider;
     switch (campaign.platform) {

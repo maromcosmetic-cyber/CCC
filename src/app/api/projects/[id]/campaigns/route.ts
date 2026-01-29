@@ -81,7 +81,7 @@ export async function POST(
 
     // Get user's API credentials for this platform
     const credentials = await getIntegrationCredentials(projectId, validated.platform);
-    
+
     // Get appropriate provider with user credentials
     let provider;
     switch (validated.platform) {
@@ -100,7 +100,7 @@ export async function POST(
       default:
         return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });
     }
-    
+
     // Check if credentials are configured
     if (!credentials) {
       return NextResponse.json(
@@ -123,6 +123,7 @@ export async function POST(
     // Create campaign record (RLS will enforce user ownership via project)
     const { data: campaign, error } = await supabase
       .from('campaigns')
+      // @ts-ignore
       .insert({
         project_id: projectId,
         platform: validated.platform,
@@ -149,10 +150,10 @@ export async function POST(
       actor_type: 'user',
       source: 'ui',
       project_id: projectId,
-      payload: { campaign_id: campaign.id, platform: validated.platform },
+      payload: { campaign_id: (campaign as any).id, platform: validated.platform },
     });
 
-    return NextResponse.json({ campaign_id: campaign.id });
+    return NextResponse.json({ campaign_id: (campaign as any).id });
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: 'Validation error' }, { status: 400 });

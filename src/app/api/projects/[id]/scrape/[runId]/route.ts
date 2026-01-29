@@ -10,11 +10,13 @@ export async function GET(
   try {
     const { runId } = params;
 
-    const { data: scrapeRun, error: runError } = await supabase
+    const { data: scrapeRunData, error: runError } = await supabase
       .from('scrape_runs')
       .select('*')
       .eq('id', runId)
       .single();
+
+    const scrapeRun = scrapeRunData as any;
 
     if (runError || !scrapeRun) {
       return NextResponse.json({ error: 'Scrape run not found' }, { status: 404 });

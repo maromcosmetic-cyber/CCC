@@ -1,7 +1,7 @@
 // Project detail API routes
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/db/client';
+import { createServiceRoleClient } from '@/lib/auth/server';
 import { logAuditEvent } from '@/lib/audit/logger';
 
 export async function GET(
@@ -10,6 +10,7 @@ export async function GET(
 ) {
   try {
     const projectId = params.id;
+    const supabase = createServiceRoleClient();
 
     const { data: project, error } = await supabase
       .from('projects')
@@ -18,11 +19,13 @@ export async function GET(
       .single();
 
     if (error || !project) {
+      console.error('❌ Project not found:', error);
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     return NextResponse.json({ project });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -35,6 +38,11 @@ export async function PUT(
     const projectId = params.id;
     const body = await request.json();
 
+    console.log('📝 Updating project:', projectId);
+    console.log('📦 Data keys:', Object.keys(body));
+
+    const supabase = createServiceRoleClient();
+
     const { data: project, error } = await supabase
       .from('projects')
       .update(body)
@@ -42,21 +50,36 @@ export async function PUT(
       .select()
       .single();
 
-    if (error || !project) {
-      return NextResponse.json({ error: error?.message || 'Failed to update project' }, { status: 500 });
+    if (error) {
+      console.error('❌ Database error:', error);
+      return NextResponse.json({
+        error: error.message,
+        details: error
+      }, { status: 500 });
     }
+
+    if (!project) {
+      console.error('❌ No project returned after update');
+      return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
+    }
+
+    console.log('✅ Project updated successfully');
 
     await logAuditEvent({
       event_type: 'project_updated',
-      actor_type: 'user',
-      source: 'ui',
+      actor_type: 'system' as any,
+      source: 'brand_analyzer' as any,
       project_id: projectId,
-      payload: body,
+      payload: { updated_fields: Object.keys(body) },
     });
 
     return NextResponse.json({ project });
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('❌ API error:', error);
+    return NextResponse.json({
+      error: error.message || 'Internal server error',
+      stack: error.stack
+    }, { status: 500 });
   }
 }
 
@@ -66,6 +89,7 @@ export async function DELETE(
 ) {
   try {
     const projectId = params.id;
+    const supabase = createServiceRoleClient();
 
     const { error } = await supabase
       .from('projects')
@@ -73,19 +97,22 @@ export async function DELETE(
       .eq('id', projectId);
 
     if (error) {
+      console.error('❌ Delete error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     await logAuditEvent({
       event_type: 'project_deleted',
-      actor_type: 'user',
-      source: 'ui',
+      actor_type: 'system' as any,
+      source: 'api' as any,
       project_id: projectId,
       payload: {},
     });
 
+    console.log('✅ Project deleted successfully');
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

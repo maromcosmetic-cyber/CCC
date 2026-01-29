@@ -33,9 +33,11 @@ export default function IntegrationsPage() {
 
     // WooCommerce fields
     const [wooStoreUrl, setWooStoreUrl] = useState('');
+    const [wooApiVersion, setWooApiVersion] = useState('v3');
     const [wooConsumerKey, setWooConsumerKey] = useState('');
     const [wooConsumerSecret, setWooConsumerSecret] = useState('');
     const [showWooSecret, setShowWooSecret] = useState(false);
+    const [wooStatusMsg, setWooStatusMsg] = useState('');
 
     // Shopify fields
     const [shopifyStoreUrl, setShopifyStoreUrl] = useState('');
@@ -76,6 +78,7 @@ export default function IntegrationsPage() {
                     if (i.config) {
                         if (i.provider_type === 'woocommerce') {
                             setWooStoreUrl(i.config.store_url || '');
+                            setWooApiVersion(i.config.api_version || 'wc/v3');
                             setWooConsumerKey(i.config.consumer_key || '');
                         }
                         if (i.provider_type === 'meta') {
@@ -148,8 +151,50 @@ export default function IntegrationsPage() {
         }
     };
 
-    const saveWooCommerceIntegration = async () => {
+    const [disconnecting, setDisconnecting] = useState<string | null>(null);
+
+    const disconnectIntegration = async (providerType: string) => {
         if (!currentProject) return;
+        if (!confirm('Are you sure you want to disconnect? This will remove your credentials.')) return;
+
+        setDisconnecting(providerType);
+        try {
+            const response = await fetch(`/api/projects/${currentProject.id}/integrations?provider_type=${providerType}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                await fetchIntegrations();
+                alert(`${providerType} disconnected successfully`);
+                // Clear local state if it matches
+                if (providerType === 'meta') {
+                    setMetaAccessToken('');
+                    setMetaAppId('');
+                    setMetaAppSecret('');
+                    setMetaAdAccountId('');
+                }
+            } else {
+                alert('Failed to disconnect');
+            }
+        } catch (error) {
+            console.error('Error disconnecting:', error);
+            alert('Error disconnecting');
+        } finally {
+            setDisconnecting(null);
+        }
+    };
+
+    const saveWooCommerceIntegration = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        console.log('CCC Debug: Saving WooCommerce integration...');
+        if (!currentProject) {
+            console.error('CCC Debug: No current project');
+            return;
+        }
 
         setSaving('woocommerce');
         try {
@@ -161,29 +206,32 @@ export default function IntegrationsPage() {
                     credentials: {
                         store_url: wooStoreUrl,
                         consumer_key: wooConsumerKey,
-                        consumer_secret: wooConsumerSecret,
+                        ...(wooConsumerSecret ? { consumer_secret: wooConsumerSecret } : {}),
+                        api_version: wooApiVersion,
                     },
                     config: {
                         store_url: wooStoreUrl,
-                        consumer_key: wooConsumerKey
+                        consumer_key: wooConsumerKey,
+                        api_version: wooApiVersion
                     }
                 }),
             });
 
             if (response.ok) {
                 await fetchIntegrations();
-                alert('WooCommerce integration saved successfully!');
+                setWooStatusMsg('Saved successfully!');
+                setTimeout(() => setWooStatusMsg(''), 3000);
                 // Clear form
-                setWooStoreUrl('');
-                setWooConsumerKey('');
+                // setWooStoreUrl(''); // KEEP DATA so user sees it
+                // setWooConsumerKey('');
                 setWooConsumerSecret('');
             } else {
                 const error = await response.json();
-                alert(`Error: ${error.error || 'Failed to save integration'}`);
+                setWooStatusMsg(`Error: ${error.error || 'Failed'}`);
             }
         } catch (error) {
             console.error('Error saving WooCommerce integration:', error);
-            alert('Failed to save integration');
+            setWooStatusMsg('Failed to save integration');
         } finally {
             setSaving(null);
         }
@@ -514,6 +562,7 @@ export default function IntegrationsPage() {
 
                         <div className="flex gap-3 pt-4">
                             <Button
+                                type="button"
                                 onClick={saveMetaIntegration}
                                 disabled={!!saving || !metaAccessToken || !metaAppId || !metaAppSecret || !metaAdAccountId}
                                 className="flex-1"
@@ -521,6 +570,16 @@ export default function IntegrationsPage() {
                                 {saving === 'meta' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                                 Save Integration
                             </Button>
+                            {getIntegrationStatus('meta') !== 'disconnected' && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => disconnectIntegration('meta')}
+                                    disabled={!!disconnecting}
+                                >
+                                    {disconnecting === 'meta' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                    Disconnect
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => testConnection('meta')}
@@ -533,90 +592,109 @@ export default function IntegrationsPage() {
                     </CardContent>
                 </Card>
 
-                {/* WooCommerce Integration */}
+                {/* Custom Store Integration */}
                 <Card className="glass-card">
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                    <ShoppingCart className="w-6 h-6 text-purple-600" />
+                                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                                    <ShoppingBag className="w-6 h-6 text-emerald-600" />
                                 </div>
                                 <div>
-                                    <CardTitle>WooCommerce</CardTitle>
-                                    <CardDescription>Connect your WooCommerce store</CardDescription>
+                                    <CardTitle>Custom Store</CardTitle>
+                                    <CardDescription>Connect a custom WooCommerce-compatible store</CardDescription>
                                 </div>
                             </div>
                             <StatusBadge status={getIntegrationStatus('woocommerce')} />
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="woo-store-url">Store URL *</Label>
-                            <Input
-                                id="woo-store-url"
-                                type="url"
-                                value={wooStoreUrl}
-                                onChange={(e) => setWooStoreUrl(e.target.value)}
-                                placeholder="https://yourstore.com"
-                                className="h-11"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="woo-consumer-key">Consumer Key *</Label>
-                            <Input
-                                id="woo-consumer-key"
-                                value={wooConsumerKey}
-                                onChange={(e) => setWooConsumerKey(e.target.value)}
-                                placeholder="ck_..."
-                                className="h-11"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="woo-consumer-secret">Consumer Secret *</Label>
-                            <div className="relative">
+                        <form onSubmit={(e) => { e.preventDefault(); console.log('Prevented form submit'); }}>
+                            <div className="space-y-2">
+                                <Label htmlFor="woo-store-url">Store URL *</Label>
                                 <Input
-                                    id="woo-consumer-secret"
-                                    type={showWooSecret ? 'text' : 'password'}
-                                    value={wooConsumerSecret}
-                                    onChange={(e) => setWooConsumerSecret(e.target.value)}
-                                    placeholder={wooConsumerKey ? "•••••••••••••••• (Saved)" : "cs_..."}
-                                    className="h-11 pr-10"
+                                    id="woo-store-url"
+                                    type="url"
+                                    value={wooStoreUrl}
+                                    onChange={(e) => setWooStoreUrl(e.target.value)}
+                                    placeholder="https://yourstore.com"
+                                    className="h-11"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="woo-api-version">API Version</Label>
+                                <Input
+                                    id="woo-api-version"
+                                    value={wooApiVersion}
+                                    onChange={(e) => setWooApiVersion(e.target.value)}
+                                    placeholder="v3"
+                                    className="h-11"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Default: wc/v3. Change if your store uses a different version.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="woo-consumer-key">Consumer Key *</Label>
+                                <Input
+                                    id="woo-consumer-key"
+                                    value={wooConsumerKey}
+                                    onChange={(e) => setWooConsumerKey(e.target.value)}
+                                    placeholder="ck_..."
+                                    className="h-11"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="woo-consumer-secret">Consumer Secret *</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="woo-consumer-secret"
+                                        type={showWooSecret ? 'text' : 'password'}
+                                        value={wooConsumerSecret}
+                                        onChange={(e) => setWooConsumerSecret(e.target.value)}
+                                        placeholder={wooConsumerKey ? "•••••••••••••••• (Saved)" : "cs_..."}
+                                        className="h-11 pr-10"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-0 top-0 h-11 w-10"
+                                        onClick={() => setShowWooSecret(!showWooSecret)}
+                                    >
+                                        {showWooSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Generate API keys in WooCommerce → Settings → Advanced → REST API
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
                                 <Button
                                     type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-0 top-0 h-11 w-10"
-                                    onClick={() => setShowWooSecret(!showWooSecret)}
+                                    onClick={saveWooCommerceIntegration}
+                                    disabled={!!saving || !wooStoreUrl || !wooConsumerKey}
+                                    className="flex-1"
                                 >
-                                    {showWooSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {saving === 'woocommerce' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                    Save Integration
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => testConnection('woocommerce')}
+                                    disabled={testing === 'woocommerce' || getIntegrationStatus('woocommerce') === 'disconnected'}
+                                >
+                                    {testing === 'woocommerce' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                    Test Connection
                                 </Button>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Generate API keys in WooCommerce → Settings → Advanced → REST API
-                            </p>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                            <Button
-                                onClick={saveWooCommerceIntegration}
-                                disabled={!!saving || !wooStoreUrl || !wooConsumerKey || !wooConsumerSecret}
-                                className="flex-1"
-                            >
-                                {saving === 'woocommerce' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                Save Integration
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => testConnection('woocommerce')}
-                                disabled={testing === 'woocommerce' || getIntegrationStatus('woocommerce') === 'disconnected'}
-                            >
-                                {testing === 'woocommerce' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                Test Connection
-                            </Button>
-                        </div>
+                            {wooStatusMsg && <p className="text-sm font-medium text-blue-600 mt-2">{wooStatusMsg}</p>}
+                        </form>
                     </CardContent>
                 </Card>
 
@@ -902,6 +980,6 @@ export default function IntegrationsPage() {
                     </CardHeader>
                 </Card>
             </div>
-        </Shell>
+        </Shell >
     );
 }

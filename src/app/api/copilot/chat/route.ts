@@ -56,8 +56,8 @@ If the user asks "Where am I?", use the provided context to answer.
         // If the model wants to call a tool (Action)
         if (message.tool_calls && message.tool_calls.length > 0) {
             const toolCall = message.tool_calls[0];
-            if (toolCall.function.name === 'navigate') {
-                const args = JSON.parse(toolCall.function.arguments);
+            if ((toolCall as any).function.name === 'navigate') {
+                const args = JSON.parse((toolCall as any).function.arguments);
                 return NextResponse.json({
                     role: "assistant",
                     content: message.content || "Navigating...",

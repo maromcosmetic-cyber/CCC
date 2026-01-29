@@ -41,6 +41,7 @@ import {
   Mail,
   Wand2,
   Subtitles,
+  PenTool,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,32 +62,25 @@ const PRIMARY_NAV = [
   { id: "studio", icon: LayoutDashboard, label: "Marketing", href: "/studio" },
   { id: "brand", icon: Sparkles, label: "Brand", href: "/brand" },
   { id: "commerce", icon: ShoppingBag, label: "Commerce", href: "/commerce/overview" },
+  { id: "media", icon: ImageIcon, label: "Media", href: "/media" },
   { id: "design", icon: Palette, label: "Design", href: "/studio/design" },
-  { id: "results", icon: BarChart2, label: "Results", href: "/results" },
 ];
 
 const STUDIO_SUB_NAV = [
-
   { id: "campaigns", label: "Campaigns", icon: FileText, href: "/studio/campaigns" },
+  { id: "campaign-assets", label: "Campaign Assets", icon: Users, href: "/studio/campaign-assets" },
+  { id: "copywriter", label: "Copywriter", icon: PenTool, href: "/studio/copywriter" },
   { id: "ads-library", label: "Ads Library", icon: Library, href: "/studio/ads" },
   { id: "schedule", label: "Schedule", icon: Calendar, href: "/studio/schedule" },
   { id: "approvals", label: "Approvals", icon: CheckSquare, href: "/studio/approvals" },
-  { id: "creative-library", label: "Creative Library", icon: Library, href: "/studio/creatives" },
-  { id: "ai-builder", label: "AI Builder", icon: Cpu, href: "/studio/ai-builder" },
   { id: "email", label: "Email Marketing", icon: Mail, href: "/studio/email" },
   { id: "analytics", label: "Analytics", icon: BarChart2, href: "/studio/analytics" },
   { id: "reviews", label: "Reviews", icon: MessageSquare, href: "/marketing/reviews" },
 ];
 
 const BRAND_SUB_NAV = [
-  { id: "brand-overview", label: "Overview", icon: Layers, href: "/brand/overview" },
-  { id: "brand-identity", label: "Identity", icon: Fingerprint, href: "/brand/identity" },
-  { id: "brand-visuals", label: "Visual Identity", icon: Palette, href: "/brand/visuals" },
-  { id: "brand-voice", label: "Voice & Guardrails", icon: Mic2, href: "/brand/voice" },
-  { id: "brand-audiences", label: "Audiences", icon: Users, href: "/brand/audiences" },
+  { id: "brand-identity", label: "Brand Identity System", icon: Fingerprint, href: "/brand/identity" },
   { id: "brand-competitors", label: "Competitor Research", icon: Search, href: "/brand/competitors" },
-  { id: "brand-personas", label: "Personas / Presenters", icon: UserCircle, href: "/brand/personas" },
-
   { id: "brand-playbook", label: "Playbook", icon: BookOpen, href: "/brand/playbook" },
 ];
 
@@ -102,6 +96,7 @@ const COMMERCE_SUB_NAV = [
 
 const DESIGN_SUB_NAV = [
   { id: "design-chat", label: "AI Assistant", icon: Sparkles, href: "/studio/design?tab=overview" },
+  { id: "design-image-gen", label: "Image Generator", icon: ImageIcon, href: "/design/image-gen" },
   { id: "design-text-video", label: "Text to Video", icon: Video, href: "/studio/design?tab=text-to-video" },
   { id: "design-image-video", label: "Image to Video", icon: Sparkles, href: "/studio/design?tab=image-to-video" },
   { id: "design-ugc-video", label: "UGC Video", icon: FileText, href: "/studio/design?tab=ugc-video" },
@@ -126,7 +121,10 @@ const MasterNav = () => {
       </div>
       <nav className="flex-1 mt-4">
         {PRIMARY_NAV.map((item) => {
-          const isActive = pathname?.startsWith(item.href) || (item.id === 'studio' && (pathname === '/' || pathname === '/studio/overview')) || (item.id === 'commerce' && pathname?.startsWith('/commerce'));
+          const isActive = pathname?.startsWith(item.href) ||
+            (item.id === 'studio' && (pathname === '/' || pathname === '/studio/overview')) ||
+            (item.id === 'commerce' && pathname?.startsWith('/commerce')) ||
+            (item.id === 'media' && pathname?.startsWith('/media'));
           return (
             <Link key={item.id} href={item.href}>
               <div className={cn(
@@ -169,6 +167,9 @@ const SecondaryNav = () => {
       title = STUDIO_SUB_NAV.find(i => i.href === pathname)?.label || "Marketing";
       items = STUDIO_SUB_NAV;
     }
+  } else if ((pathname || '').startsWith('/design')) {
+    title = "Design";
+    items = DESIGN_SUB_NAV;
   } else if ((pathname || '').startsWith('/brand')) {
     title = "Brand";
     items = BRAND_SUB_NAV;

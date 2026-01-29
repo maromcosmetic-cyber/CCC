@@ -1,0 +1,1533 @@
+'use client';
+
+import { Shell } from "@/components/layout/Shell";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { BookOpen, Download, FileText, Printer, Palette, MessageSquare, Shield, Users, Target, TrendingUp, Package, Map, AlertTriangle, Layers, Award, MessageCircle, Smartphone, Rocket, BarChart3, Bot, ShoppingBag, RefreshCw, BarChart2 } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
+import { calculateOverallScore, BRAND_MODULES } from "@/lib/brand/completeness";
+import { useMemo, useEffect, useState } from "react";
+import html2pdf from 'html2pdf.js';
+import { toast } from "sonner";
+
+export default function PlaybookPage() {
+    const { currentProject, refreshProjects } = useProject();
+    const brandIdentity = currentProject?.brandIdentity || {};
+    const [competitors, setCompetitors] = useState<any[]>([]);
+    const [syncing, setSyncing] = useState(false);
+    const [syncProgress, setSyncProgress] = useState("");
+    const overallData = useMemo(() => calculateOverallScore(brandIdentity), [brandIdentity]);
+
+    // Fetch competitors
+    useEffect(() => {
+        if (currentProject?.id) {
+            console.log('📊 Fetching competitors for project:', currentProject.id);
+            fetch(`/api/projects/${currentProject.id}/competitors`)
+                .then(res => res.json())
+                .then(data => {
+                    console.log('📊 Competitors fetched:', data.competitors?.length || 0, 'competitors');
+                    console.log('📊 Competitor data:', data.competitors);
+                    setCompetitors(data.competitors || []);
+                })
+                .catch(err => console.error('❌ Failed to fetch competitors:', err));
+        }
+    }, [currentProject?.id]);
+
+    const handleSyncAll = async () => {
+        if (!currentProject?.id) {
+            toast.error("No project selected");
+            return;
+        }
+
+        setSyncing(true);
+        setSyncProgress("🌐 Analyzing website...");
+
+        try {
+            // Stage 1: Analyze website (brand identity + products)
+            const response = await fetch('/api/brand/analyze-website', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId: currentProject.id })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setSyncProgress("✅ Brand data synced!");
+                toast.success(`✅ Playbook updated! Found ${result.stats.productsFound || 0} products`);
+
+                // Refresh project data
+                await refreshProjects();
+
+                // Refresh competitors list
+                const compRes = await fetch(`/api/projects/${currentProject.id}/competitors`);
+                const compData = await compRes.json();
+                setCompetitors(compData.competitors || []);
+
+                setTimeout(() => {
+                    setSyncing(false);
+                    setSyncProgress("");
+                }, 1000);
+            } else {
+                toast.error("❌ Sync Failed: " + result.error);
+                setSyncing(false);
+                setSyncProgress("");
+            }
+        } catch (error: any) {
+            console.error('Sync error:', error);
+            toast.error("❌ Sync failed");
+            setSyncing(false);
+            setSyncProgress("");
+        }
+    };
+
+    const handleExportPDF = async () => {
+        const element = document.getElementById('playbook-content');
+        if (!element) {
+            toast.error('❌ Playbook content not found');
+            return;
+        }
+
+        toast.info('📄 Generating PDF... This may take 10-20 seconds.');
+
+        try {
+            // Wait for all images to be fully loaded
+            const images = element.querySelectorAll('img');
+            const imageLoadPromises = Array.from(images).map((img) => {
+                return new Promise((resolve) => {
+                    if (img.complete) {
+                        resolve(true);
+                    } else {
+                        img.onload = () => resolve(true);
+                        img.onerror = () => resolve(false);
+                        setTimeout(() => resolve(false), 5000);
+                    }
+                });
+            });
+
+            await Promise.all(imageLoadPromises);
+
+            // Try to convert images to base64 data URLs via a proxy approach
+            const originalImages = element.querySelectorAll('img');
+            const imageData: Array<{ element: HTMLImageElement, dataUrl: string | null }> = [];
+
+            for (const img of Array.from(originalImages)) {
+                try {
+                    // Try to fetch image through our API to bypass CORS
+                    const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(img.src)}`);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const dataUrl = await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        });
+                        imageData.push({ element: img, dataUrl });
+                    } else {
+                        imageData.push({ element: img, dataUrl: null });
+                    }
+                } catch (e) {
+                    // If proxy fails, try direct conversion
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        if (ctx && img.complete && img.naturalWidth > 0) {
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            ctx.drawImage(img, 0, 0);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                            imageData.push({ element: img, dataUrl });
+                        } else {
+                            imageData.push({ element: img, dataUrl: null });
+                        }
+                    } catch (err) {
+                        imageData.push({ element: img, dataUrl: null });
+                    }
+                }
+            }
+
+            // Clone element and replace images with data URLs
+            const clonedElement = element.cloneNode(true) as HTMLElement;
+            const clonedImages = clonedElement.querySelectorAll('img');
+
+            imageData.forEach((data, index) => {
+                if (data.dataUrl && clonedImages[index]) {
+                    clonedImages[index].src = data.dataUrl;
+                }
+            });
+
+            const opt = {
+                margin: 0.5,
+                filename: `${currentProject?.name || 'brand'}-playbook.pdf`,
+                image: { type: 'jpeg' as const, quality: 0.95 },
+                html2canvas: {
+                    scale: 2,
+                    logging: false,
+                    letterRendering: true
+                },
+                jsPDF: {
+                    unit: 'in' as const,
+                    format: 'letter',
+                    orientation: 'portrait' as const
+                },
+                pagebreak: {
+                    mode: ['avoid-all', 'css', 'legacy'],
+                    before: '.page-break-before',
+                    after: '.page-break-after',
+                    avoid: '.avoid-break'
+                }
+            };
+
+            await html2pdf().set(opt).from(clonedElement).save();
+            toast.success('✅ PDF downloaded successfully!');
+        } catch (err: any) {
+            console.error('PDF generation error:', err);
+            toast.error('❌ Failed to generate PDF: ' + (err.message || 'Unknown error'));
+        }
+    };
+
+    const handleExportTXT = () => {
+        // Generate a formatted text document
+        const playbookContent = generatePlaybookText(brandIdentity, currentProject, competitors);
+
+        // Create a blob and download
+        const blob = new Blob([playbookContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentProject?.name || 'brand'}-playbook.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('✅ TXT file downloaded!');
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <Shell>
+            <div className="max-w-5xl mx-auto space-y-8 pb-20">
+                <div className="flex items-center justify-between print:hidden">
+                    <div>
+                        <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-widest mb-2">
+                            <BookOpen className="w-3 h-3" /> Brand Strategy
+                        </div>
+                        <h1 className="text-3xl font-display font-bold">Brand Intelligence Playbook</h1>
+                        <p className="text-muted-foreground">
+                            Comprehensive brand strategy document • {overallData.score}% Complete
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleSyncAll}
+                            disabled={syncing}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                        >
+                            {syncing ? (
+                                <>
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                    Syncing...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Sync All Data
+                                </>
+                            )}
+                        </Button>
+                        <Button onClick={handleExportPDF} className="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700">
+                            <Download className="w-4 h-4 mr-2" /> Export PDF
+                        </Button>
+                        <Button onClick={handleExportTXT} variant="outline">
+                            <FileText className="w-4 h-4 mr-2" /> Export TXT
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline">
+                            <Printer className="w-4 h-4 mr-2" /> Print
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Playbook Document */}
+                <Card className="border-2 shadow-xl">
+                    <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b-2">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4 flex-1">
+                                {brandIdentity.visual?.logo?.url && (
+                                    <div className="flex-shrink-0">
+                                        <img
+                                            src={brandIdentity.visual.logo.url}
+                                            alt="Brand Logo"
+                                            className="h-16 w-auto object-contain"
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <CardTitle className="text-2xl">{currentProject?.name || "Brand"} Playbook</CardTitle>
+                                    <p className="text-sm text-muted-foreground">
+                                        Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-right text-sm text-muted-foreground">
+                                <p className="font-semibold">CONFIDENTIAL</p>
+                                <p>Strategic Brand Intelligence</p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-8 bg-white">
+                        <ScrollArea className="h-[700px] pr-4">
+                            <div id="playbook-content">
+                                {/* Table of Contents */}
+                                <section className="mb-8">
+                                    <h2 className="text-xl font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                        <BookOpen className="w-5 h-5" />
+                                        Table of Contents
+                                    </h2>
+                                    <div className="grid grid-cols-3 gap-3 text-sm">
+                                        <div className="space-y-1">
+                                            <p className="font-semibold text-xs text-muted-foreground uppercase mb-2">Core Identity</p>
+                                            <p>1. Brand DNA & Philosophy</p>
+                                            <p>2. Product Intelligence</p>
+                                            <p>3. Target Audience</p>
+                                            <p>4. Strategic Positioning</p>
+                                            <p>5. Market & Competition</p>
+                                            <p>6. Offer Structure</p>
+                                            <p>7. Customer Journey</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="font-semibold text-xs text-muted-foreground uppercase mb-2">Brand Expression</p>
+                                            <p>8. Visual Identity</p>
+                                            <p>9. Voice & Tone</p>
+                                            <p>10. Brand Guardrails</p>
+                                            <p>11. Narrative Architecture</p>
+                                            <p>12. Problem Matrix</p>
+                                            <p>13. Content Pillars</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="font-semibold text-xs text-muted-foreground uppercase mb-2">Growth & Intelligence</p>
+                                            <p>14. Trust Infrastructure</p>
+                                            <p>15. Community Model</p>
+                                            <p>16. Platform Strategy</p>
+                                            <p>17. Long-Term Vision</p>
+                                            <p>18. KPIs & Optimization</p>
+                                            <p>19. AI Autonomy Rules</p>
+                                            <p>20. Product Catalog</p>
+                                            <p>21. Competitor Intelligence</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 1: Brand DNA */}
+                                <PlaybookSection
+                                    icon={<Target className="w-5 h-5" />}
+                                    title="1. Brand DNA & Philosophy"
+                                    subtitle="Who we are and why we exist"
+                                    data={brandIdentity.dna}
+                                    fields={[
+                                        { label: "Brand Name", key: "name" },
+                                        { label: "Core Problem Solved", key: "problem_solved" },
+                                        { label: "Origin Story", key: "origin_story" },
+                                        { label: "Mission & Stand", key: "mission" },
+                                        { label: "Vision (10-Year)", key: "vision" },
+                                        { label: "World Problem", key: "world_problem" },
+                                        { label: "Emotional Outcome", key: "emotional_outcome" },
+                                        { label: "Main Differentiator", key: "differentiator" },
+                                        { label: "Anti-Identity (Never)", key: "anti_identity" },
+                                        { label: "Core Values", key: "values", isArray: true },
+                                        { label: "Ethical Boundaries", key: "ethical_boundaries", isArray: true },
+                                        { label: "Standards", key: "standards", isArray: true },
+                                        { label: "10-Year Identity", key: "ten_year_identity" }
+                                    ]}
+                                />
+
+                                {/* SECTION 2: Product Intelligence */}
+                                <PlaybookSection
+                                    icon={<Package className="w-5 h-5" />}
+                                    title="2. Product Intelligence"
+                                    subtitle="Deep product knowledge and positioning"
+                                    data={brandIdentity.product}
+                                    fields={[
+                                        { label: "Product Name", key: "name" },
+                                        { label: "Category", key: "category" },
+                                        { label: "Main Benefits", key: "main_benefits" },
+                                        { label: "Unique Features", key: "unique_features" },
+                                        { label: "Quality Level", key: "quality_level" },
+                                        { label: "Price Point", key: "price_point" },
+                                        { label: "Why Choose Us", key: "why_choose_us" }
+                                    ]}
+                                />
+
+                                {/* SECTION 3: Target Audience */}
+                                <PlaybookSection
+                                    icon={<Users className="w-5 h-5" />}
+                                    title="3. Target Audience & Buyer Psychology"
+                                    subtitle="Who we serve and what drives them"
+                                    data={brandIdentity.audience}
+                                    fields={[
+                                        { label: "Ideal Customer", key: "ideal_customer" },
+                                        { label: "Pain Points", key: "pain_points" },
+                                        { label: "Desires", key: "desires" },
+                                        { label: "Fears", key: "fears" },
+                                        { label: "Shopping Behavior", key: "shopping_behavior" },
+                                        { label: "Influences", key: "influences" }
+                                    ]}
+                                />
+
+
+                                {/* SECTION 3.5: Customer Personas */}
+                                <PersonasSection personas={brandIdentity.personas} />
+                                {/* SECTION 4: Strategic Positioning */}
+                                <PlaybookSection
+                                    icon={<TrendingUp className="w-5 h-5" />}
+                                    title="4. Strategic Positioning"
+                                    subtitle="Where we sit in the market and minds"
+                                    data={brandIdentity.positioning}
+                                    fields={[
+                                        { label: "Market Category", key: "market_category" },
+                                        { label: "Sub-Category", key: "sub_category" },
+                                        { label: "Target Audience", key: "target_audience" },
+                                        { label: "NOT For", key: "not_for", isArray: true },
+                                        { label: "Remembered For", key: "remembered_for" },
+                                        { label: "Dominant Idea", key: "dominant_idea" }
+                                    ]}
+                                />
+
+                                {/* SECTION 5: Market & Competition */}
+                                <PlaybookSection
+                                    icon={<Target className="w-5 h-5" />}
+                                    title="5. Market & Competition"
+                                    subtitle="Competitive landscape and opportunities"
+                                    data={brandIdentity.market}
+                                    fields={[
+                                        { label: "Competitors", key: "competitors" },
+                                        { label: "Positioning vs Competitors", key: "positioning" },
+                                        { label: "Market Gap", key: "market_gap" }
+                                    ]}
+                                />
+
+                                {/* SECTION 6: Offer Structure */}
+                                <PlaybookSection
+                                    icon={<Package className="w-5 h-5" />}
+                                    title="6. Offer Structure & Economics"
+                                    subtitle="Pricing and offer architecture"
+                                    data={brandIdentity.offer}
+                                    fields={[
+                                        { label: "Price Strategy", key: "price_strategy" },
+                                        { label: "Bundles", key: "bundles" },
+                                        { label: "Subscriptions", key: "subscriptions" }
+                                    ]}
+                                />
+
+                                {/* SECTION 7: Customer Journey */}
+                                <PlaybookSection
+                                    icon={<Map className="w-5 h-5" />}
+                                    title="7. Customer Journey"
+                                    subtitle="How customers discover and buy"
+                                    data={brandIdentity.journey}
+                                    fields={[
+                                        { label: "Discovery Channels", key: "discovery" },
+                                        { label: "Hesitation Points", key: "hesitation" },
+                                        { label: "After Purchase", key: "after_purchase" }
+                                    ]}
+                                />
+
+                                {/* SECTION 8: Visual Identity */}
+                                <VisualIdentitySection data={brandIdentity.visual} />
+
+                                {/* SECTION 9: Voice & Tone */}
+                                <PlaybookSection
+                                    icon={<MessageSquare className="w-5 h-5" />}
+                                    title="9. Voice & Tone"
+                                    subtitle="How we communicate"
+                                    data={brandIdentity.voice}
+                                    fields={[
+                                        { label: "Personality Traits", key: "personality_traits", isArray: true },
+                                        { label: "Vocabulary Style", key: "vocabulary_style" },
+                                        { label: "Humor Level", key: "humor_level" },
+                                        { label: "Authority Level", key: "authority_level" },
+                                        { label: "Emotional Range", key: "emotional_range" },
+                                        { label: "Words to Use", key: "words_to_use", isArray: true },
+                                        { label: "Words to Avoid", key: "words_to_avoid", isArray: true },
+                                        { label: "On-Brand Phrases", key: "on_brand_phrases", isArray: true },
+                                        { label: "Forbidden Phrases", key: "forbidden_phrases", isArray: true }
+                                    ]}
+                                />
+
+                                {/* SECTION 10: Guardrails */}
+                                <PlaybookSection
+                                    icon={<Shield className="w-5 h-5" />}
+                                    title="10. Brand Guardrails & Compliance"
+                                    subtitle="Boundaries and rules"
+                                    data={brandIdentity.guardrails}
+                                    fields={[
+                                        { label: "Regulatory Limits", key: "regulatory_limits", isArray: true },
+                                        { label: "Cultural Sensitivities", key: "cultural_sensitivities", isArray: true },
+                                        { label: "Platform Policies", key: "platform_policies", isArray: true },
+                                        { label: "Forbidden Claims", key: "forbidden_claims", isArray: true }
+                                    ]}
+                                />
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 11: Narrative Architecture */}
+                                <PlaybookSection
+                                    icon={<MessageSquare className="w-5 h-5" />}
+                                    title="11. Narrative Architecture & Story Engine"
+                                    subtitle="How we structure compelling brand stories"
+                                    data={brandIdentity.narrative}
+                                    fields={[
+                                        { label: "The Hero (Customer)", key: "hero" },
+                                        { label: "The Villain (Problem)", key: "villain" },
+                                        { label: "The Guide (Brand)", key: "guide" },
+                                        { label: "The Transformation", key: "transformation" },
+                                        { label: "The Outcome", key: "outcome" }
+                                    ]}
+                                />
+
+                                {/* SECTION 12: Pain Matrix */}
+                                <PlaybookSection
+                                    icon={<AlertTriangle className="w-5 h-5" />}
+                                    title="12. Problem Matrix & Pain Hierarchy"
+                                    subtitle="Deep customer pain analysis"
+                                    data={brandIdentity.pain_matrix}
+                                    fields={[
+                                        { label: "Physical Problems", key: "physical_problems" },
+                                        { label: "Emotional Problems", key: "emotional_problems" },
+                                        { label: "Social Problems", key: "social_problems" },
+                                        { label: "Financial Problems", key: "financial_problems" },
+                                        { label: "Identity Problems", key: "identity_problems" }
+                                    ]}
+                                />
+
+                                {/* SECTION 13: Content Pillars */}
+                                <PlaybookSection
+                                    icon={<Layers className="w-5 h-5" />}
+                                    title="13. Content Pillar System"
+                                    subtitle="Strategic content themes and frameworks"
+                                    data={brandIdentity.content_pillars}
+                                    fields={[
+                                        { label: "Content Pillar 1", key: "pillar_1" },
+                                        { label: "Content Pillar 2", key: "pillar_2" },
+                                        { label: "Content Pillar 3", key: "pillar_3" },
+                                        { label: "Content Pillar 4 (Optional)", key: "pillar_4" }
+                                    ]}
+                                />
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 14: Trust Infrastructure */}
+                                <PlaybookSection
+                                    icon={<Award className="w-5 h-5" />}
+                                    title="14. Trust Infrastructure & Authority Signals"
+                                    subtitle="Building credibility and social proof"
+                                    data={brandIdentity.trust_infrastructure}
+                                    fields={[
+                                        { label: "Social Proof Types", key: "social_proof_types", isArray: true },
+                                        { label: "Certifications", key: "certifications", isArray: true },
+                                        { label: "Partnerships", key: "partnerships", isArray: true },
+                                        { label: "Media Mentions", key: "media_mentions", isArray: true },
+                                        { label: "Guarantees", key: "guarantees", isArray: true }
+                                    ]}
+                                />
+
+                                {/* SECTION 15: Community Model */}
+                                <PlaybookSection
+                                    icon={<MessageCircle className="w-5 h-5" />}
+                                    title="15. Community & Relationship Model"
+                                    subtitle="How we build and nurture customer relationships"
+                                    data={brandIdentity.community_model}
+                                    fields={[
+                                        { label: "Customer Treatment Philosophy", key: "customer_treatment_philosophy" },
+                                        { label: "Problem Resolution Protocol", key: "problem_resolution_protocol" },
+                                        { label: "Loyalty Building Tactics", key: "loyalty_building_tactics" },
+                                        { label: "Community Building Strategy", key: "community_building_strategy" }
+                                    ]}
+                                />
+
+                                {/* SECTION 16: Platform Strategy */}
+                                <PlaybookSection
+                                    icon={<Smartphone className="w-5 h-5" />}
+                                    title="16. Platform & Channel Strategy"
+                                    subtitle="Where and how we show up"
+                                    data={brandIdentity.platform_strategy}
+                                    fields={[
+                                        { label: "Primary Platforms", key: "primary_platforms" },
+                                        { label: "Platform-Specific Tone Adjustments", key: "platform_tone_adjustments" },
+                                        { label: "Content Types Per Platform", key: "content_types_per_platform" }
+                                    ]}
+                                />
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 17: Long-Term Vision */}
+                                <PlaybookSection
+                                    icon={<Rocket className="w-5 h-5" />}
+                                    title="17. Long-Term Vision & Expansion Logic"
+                                    subtitle="Where the brand is going"
+                                    data={brandIdentity.long_term_vision}
+                                    fields={[
+                                        { label: "Future Products", key: "future_products" },
+                                        { label: "Future Markets", key: "future_markets" },
+                                        { label: "Future Positioning", key: "future_positioning" },
+                                        { label: "Brand Evolution Path", key: "brand_evolution_path" }
+                                    ]}
+                                />
+
+                                {/* SECTION 18: KPIs & Optimization */}
+                                <PlaybookSection
+                                    icon={<BarChart3 className="w-5 h-5" />}
+                                    title="18. KPIs & Optimization Logic"
+                                    subtitle="Success metrics and performance benchmarks"
+                                    data={brandIdentity.kpis_optimization}
+                                    fields={[
+                                        { label: "Success Metrics", key: "success_metrics", isArray: true },
+                                        { label: "Benchmarks", key: "benchmarks" },
+                                        { label: "Growth Targets", key: "growth_targets" }
+                                    ]}
+                                />
+
+                                {/* SECTION 19: AI Autonomy Rules */}
+                                <PlaybookSection
+                                    icon={<Bot className="w-5 h-5" />}
+                                    title="19. AI Autonomy Rules & Control Layer"
+                                    subtitle="What AI can decide and what requires approval"
+                                    data={brandIdentity.ai_autonomy_rules}
+                                    fields={[
+                                        { label: "AI Can Decide Alone", key: "can_decide_alone", isArray: true },
+                                        { label: "Requires Human Approval", key: "requires_approval", isArray: true },
+                                        { label: "Forbidden Actions", key: "forbidden_actions", isArray: true },
+                                        { label: "Escalation Logic", key: "escalation_logic" }
+                                    ]}
+                                />
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 20: Product Catalog */}
+                                <ProductCatalogSection data={brandIdentity.products_catalog} />
+
+                                <Separator className="my-8" />
+
+                                {/* SECTION 21: Competitor Intelligence */}
+                                <CompetitorSection
+                                    competitors={competitors}
+                                    crossInsights={brandIdentity?.competitive_insights?.insights}
+                                />
+
+                                {/* Footer */}
+                                <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
+                                    <p className="font-semibold">End of Brand Intelligence Playbook</p>
+                                    <p className="mt-2">This is a living document. Last updated: {new Date().toLocaleDateString()}</p>
+                                    <p className="mt-1">© {new Date().getFullYear()} {currentProject?.name || "Your Brand"}. All Rights Reserved. CONFIDENTIAL.</p>
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-amber-200 bg-amber-50 print:hidden">
+                    <CardContent className="p-4">
+                        <p className="text-sm text-amber-800">
+                            <strong>💡 Tip:</strong> Click "Export PDF" to download a beautifully formatted PDF with all content, colors, and images.
+                            The playbook automatically updates as you complete more modules.
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </Shell>
+    );
+}
+
+// Helper Component for Playbook Sections
+function PlaybookSection({ icon, title, subtitle, data, fields }: {
+    icon?: React.ReactNode;
+    title: string;
+    subtitle?: string;
+    data: any;
+    fields: Array<{ label: string; key: string; isArray?: boolean }>;
+}) {
+    if (!data) return null;
+
+    // Check if section has any data
+    const hasData = fields.some(({ key }) => {
+        const value = data[key];
+        return value && (!Array.isArray(value) || value.length > 0);
+    });
+
+    if (!hasData) return null;
+
+    return (
+        <section className="mb-10 page-break-inside-avoid">
+            <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-indigo-200">
+                {icon && <div className="text-indigo-600 mt-1">{icon}</div>}
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold">{title}</h2>
+                    {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+                </div>
+            </div>
+            <div className="space-y-4 pl-2">
+                {fields.map(({ label, key, isArray }) => {
+                    const value = data[key];
+                    if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+                    return (
+                        <div key={key} className="pl-4 border-l-2 border-gray-200">
+                            <p className="text-xs font-semibold text-indigo-600 uppercase mb-1 tracking-wide">{label}</p>
+                            {isArray && Array.isArray(value) ? (
+                                <ul className="list-disc list-inside text-sm space-y-1">
+                                    {value.map((item: string, i: number) => (
+                                        <li key={i} className="text-gray-700">{item}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm whitespace-pre-wrap text-gray-700">{value}</p>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+// Visual Identity Section (with color swatches)
+function VisualIdentitySection({ data }: { data: any }) {
+    if (!data) return null;
+
+    return (
+        <section className="mb-10 page-break-inside-avoid">
+            <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-indigo-200">
+                <Palette className="w-5 h-5 text-indigo-600 mt-1" />
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold">8. Visual Identity</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Colors, typography, and visual style</p>
+                </div>
+            </div>
+
+            <div className="space-y-6 pl-2">
+                {/* Colors */}
+                {data.colors?.primary && data.colors.primary.length > 0 && (
+                    <div className="pl-4 border-l-2 border-gray-200">
+                        <p className="text-xs font-semibold text-indigo-600 uppercase mb-3 tracking-wide">Primary Colors</p>
+                        <div className="grid grid-cols-5 gap-3">
+                            {data.colors.primary.map((color: any, i: number) => (
+                                <div key={i} className="text-center">
+                                    <div
+                                        className="w-full h-16 rounded-lg border mb-2"
+                                        style={{ backgroundColor: color.hex }}
+                                    ></div>
+                                    <p className="text-xs font-mono font-semibold">{color.hex}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{color.name}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Typography */}
+                {(data.typography?.headings?.length > 0 || data.typography?.body?.length > 0) && (
+                    <div className="pl-4 border-l-2 border-gray-200">
+                        <p className="text-xs font-semibold text-indigo-600 uppercase mb-2 tracking-wide">Typography</p>
+                        <div className="space-y-3 text-sm">
+                            {data.typography.headings && data.typography.headings.length > 0 && (
+                                <div>
+                                    <p className="font-semibold mb-1">Headings:</p>
+                                    <ul className="list-disc list-inside ml-2">
+                                        {data.typography.headings.map((font: any, i: number) => (
+                                            <li key={i}>
+                                                {font.family}
+                                                {font.weights && font.weights.length > 0 && (
+                                                    <span className="text-xs text-muted-foreground"> • Weights: {font.weights.join(', ')}</span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {data.typography.body && data.typography.body.length > 0 && (
+                                <div>
+                                    <p className="font-semibold mb-1">Body:</p>
+                                    <ul className="list-disc list-inside ml-2">
+                                        {data.typography.body.map((font: any, i: number) => (
+                                            <li key={i}>
+                                                {font.family}
+                                                {font.weights && font.weights.length > 0 && (
+                                                    <span className="text-xs text-muted-foreground"> • Weights: {font.weights.join(', ')}</span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Logo */}
+                {data.logo?.url && (
+                    <div className="pl-4 border-l-2 border-gray-200">
+                        <p className="text-xs font-semibold text-indigo-600 uppercase mb-2 tracking-wide">Logo</p>
+                        <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center h-32 border">
+                            <img
+                                src={data.logo.url}
+                                alt="Brand Logo"
+                                className="max-h-full max-w-[200px] object-contain"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Visual Style */}
+                {(data.image_style || data.mood) && (
+                    <div className="pl-4 border-l-2 border-gray-200 space-y-2">
+                        {data.image_style && (
+                            <div>
+                                <p className="text-xs font-semibold text-indigo-600 uppercase mb-1 tracking-wide">Image Style</p>
+                                <p className="text-sm text-gray-700">{data.image_style}</p>
+                            </div>
+                        )}
+                        {data.mood && (
+                            <div>
+                                <p className="text-xs font-semibold text-indigo-600 uppercase mb-1 tracking-wide">Visual Mood</p>
+                                <p className="text-sm text-gray-700">{data.mood}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
+// Competitor Intelligence Section - COMPREHENSIVE 20-MODULE VIEW
+function CompetitorSection({ competitors, crossInsights }: { competitors: any[], crossInsights?: any }) {
+    console.log('🎯 CompetitorSection rendering with:', competitors?.length || 0, 'competitors');
+    console.log('📊 Cross-competitor insights:', crossInsights ? 'Available' : 'Not available');
+
+    if (!competitors || competitors.length === 0) {
+        return (
+            <section className="mb-10 page-break-before">
+                <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-red-200">
+                    <Target className="w-5 h-5 text-red-600 mt-1" />
+                    <div className="flex-1">
+                        <h2 className="text-xl font-bold text-red-900">21. Competitor Intelligence</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Deep competitive analysis</p>
+                    </div>
+                </div>
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="p-6 text-center">
+                        <p className="text-amber-800 mb-2">
+                            <strong>📊 No competitor analysis yet</strong>
+                        </p>
+                        <p className="text-sm text-amber-700">
+                            Go to the <strong>Competitors</strong> page and run a <strong>"Deep Scan"</strong> to analyze your competitors.
+                            The results will automatically appear here in the playbook.
+                        </p>
+                    </CardContent>
+                </Card>
+            </section>
+        );
+    }
+
+    return (
+        <section className="mb-10 page-break-before">
+            <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-red-200">
+                <Target className="w-5 h-5 text-red-600 mt-1" />
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold text-red-900">21. Competitor Intelligence</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Deep competitive analysis • {competitors.length} competitor{competitors.length !== 1 ? 's' : ''} analyzed</p>
+                </div>
+            </div>
+
+            <div className="space-y-8 pl-2">
+                {/* Cross-Competitor Strategic Analysis */}
+                {crossInsights && (
+                    <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50 mb-8 page-break-inside-avoid">
+                        <CardHeader className="border-b-2 border-purple-200">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <BarChart2 className="w-5 h-5 text-purple-600" />
+                                📊 Cross-Competitor Strategic Analysis
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground mt-1">Aggregated insights from all competitors</p>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-4">
+                            {crossInsights.strategic_insights && (
+                                <div className="pl-4 border-l-4 border-purple-400 bg-white p-3 rounded">
+                                    <p className="text-xs font-bold text-purple-700 uppercase mb-2 tracking-wide">🎯 Strategic Insights</p>
+                                    <div className="space-y-2 text-xs">
+                                        <div><strong>Market Landscape:</strong> <p className="mt-1">{crossInsights.strategic_insights.market_landscape}</p></div>
+                                        <div><strong>Positioning:</strong> <p className="mt-1">{crossInsights.strategic_insights.competitive_positioning_advice}</p></div>
+                                    </div>
+                                </div>
+                            )}
+                            {crossInsights.recommended_actions?.length > 0 && (
+                                <div className="pl-4 border-l-4 border-yellow-400 bg-white p-3 rounded">
+                                    <p className="text-xs font-bold text-yellow-700 uppercase mb-2 tracking-wide">⚡ Top Recommended Actions</p>
+                                    <div className="space-y-2">{crossInsights.recommended_actions.slice(0, 3).map((action: any, i: number) => (
+                                        <div key={i} className="text-xs p-2 bg-gray-50 rounded">
+                                            <div className="flex items-center gap-2 mb-1"><Badge variant={action.priority === "High" ? "destructive" : "default"} className="text-[10px]">{action.priority}</Badge></div>
+                                            <p className="font-semibold">{action.action}</p>
+                                            <p className="text-muted-foreground">{action.rationale}</p>
+                                        </div>
+                                    ))}</div>
+                                </div>
+                            )}
+                            {crossInsights.winning_campaigns?.length > 0 && (
+                                <div className="pl-4 border-l-4 border-yellow-400 bg-white p-3 rounded">
+                                    <p className="text-xs font-bold text-yellow-700 uppercase mb-2 tracking-wide">🏆 Top Winning Campaigns</p>
+                                    <div className="space-y-2">{crossInsights.winning_campaigns.slice(0, 2).map((campaign: any, i: number) => (
+                                        <div key={i} className="text-xs p-2 bg-gradient-to-br from-yellow-50 to-orange-50 rounded border border-yellow-200">
+                                            <p className="font-bold mb-1">{campaign.competitor_name}</p>
+                                            <p className="mb-1"><strong>Campaign:</strong> {campaign.campaign_description}</p>
+                                            <p className="text-green-700"><strong>Why It Worked:</strong> {campaign.why_successful}</p>
+                                        </div>
+                                    ))}</div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {competitors.map((comp, index) => {
+                    const analysis = comp.analysis;
+                    if (!analysis) return null;
+
+                    return (
+                        <div key={comp.id} className="avoid-break">
+                            <Card className="border-2 border-red-300 shadow-md">
+                                <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b-2 pb-3">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <CardTitle className="text-lg">{comp.name}</CardTitle>
+                                            <p className="text-xs text-muted-foreground mt-1">{comp.website_url}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1 items-end">
+                                            {analysis.competitor_identification && (
+                                                <>
+                                                    <Badge variant="destructive">{analysis.competitor_identification.competitor_type}</Badge>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        Threat: {analysis.competitor_identification.threat_level}/10
+                                                    </Badge>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pt-4">
+                                    {/* 1. Identification */}
+                                    {analysis.competitor_identification && (
+                                        <div className="pl-4 border-l-2 border-red-200">
+                                            <p className="text-xs font-semibold text-red-600 uppercase mb-2 tracking-wide">Identification</p>
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <p><strong>Category:</strong> {analysis.competitor_identification.category}</p>
+                                                <p><strong>Sub-category:</strong> {analysis.competitor_identification.subcategory}</p>
+                                                <p><strong>Country:</strong> {analysis.competitor_identification.country}</p>
+                                                <p><strong>Type:</strong> {analysis.competitor_identification.competitor_type}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. Brand Positioning */}
+                                    {analysis.brand_positioning_extraction && (
+                                        <div className="pl-4 border-l-2 border-orange-200">
+                                            <p className="text-xs font-semibold text-orange-600 uppercase mb-2 tracking-wide">Brand Positioning</p>
+                                            <div className="space-y-1 text-sm">
+                                                {analysis.brand_positioning_extraction.core_promise && (
+                                                    <p><strong>Core Promise:</strong> {analysis.brand_positioning_extraction.core_promise}</p>
+                                                )}
+                                                {analysis.brand_positioning_extraction.emotional_angle && (
+                                                    <p><strong>Emotional Angle:</strong> {analysis.brand_positioning_extraction.emotional_angle}</p>
+                                                )}
+                                                {analysis.brand_positioning_extraction.value_propositions?.length > 0 && (
+                                                    <div>
+                                                        <strong>Value Props:</strong>
+                                                        <ul className="list-disc list-inside ml-2 text-xs">
+                                                            {analysis.brand_positioning_extraction.value_propositions.slice(0, 3).map((vp: string, i: number) => (
+                                                                <li key={i}>{vp}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3. Target Audience */}
+                                    {analysis.target_audience_signals && (
+                                        <div className="pl-4 border-l-2 border-yellow-200">
+                                            <p className="text-xs font-semibold text-yellow-700 uppercase mb-2 tracking-wide">Target Audience</p>
+                                            <div className="text-sm space-y-1">
+                                                {analysis.target_audience_signals.demographics && (
+                                                    <p><strong>Demographics:</strong> {analysis.target_audience_signals.demographics.age_range}, {analysis.target_audience_signals.demographics.gender}, {analysis.target_audience_signals.demographics.income_level}</p>
+                                                )}
+                                                {analysis.target_audience_signals.emotional_state_targeted && (
+                                                    <p><strong>Emotional State:</strong> {analysis.target_audience_signals.emotional_state_targeted}</p>
+                                                )}
+                                                {analysis.target_audience_signals.identity_aspiration && (
+                                                    <p className="text-xs"><strong>Identity Aspiration:</strong> {analysis.target_audience_signals.identity_aspiration}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 4. Pricing & Offers */}
+                                    {analysis.offer_structure_pricing && (
+                                        <div className="pl-4 border-l-2 border-green-200">
+                                            <p className="text-xs font-semibold text-green-600 uppercase mb-2 tracking-wide">Pricing & Offers</p>
+                                            <div className="text-sm space-y-1">
+                                                {analysis.offer_structure_pricing.price_ranges && (
+                                                    <p><strong>Price Ranges:</strong> {analysis.offer_structure_pricing.price_ranges}</p>
+                                                )}
+                                                {analysis.offer_structure_pricing.bundles?.length > 0 && (
+                                                    <p className="text-xs"><strong>Bundles:</strong> {analysis.offer_structure_pricing.bundles.join(', ')}</p>
+                                                )}
+                                                {analysis.offer_structure_pricing.guarantees?.length > 0 && (
+                                                    <p className="text-xs"><strong>Guarantees:</strong> {analysis.offer_structure_pricing.guarantees.join(', ')}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 5. Products & Features */}
+                                    {analysis.product_feature_mapping && (
+                                        <div className="pl-4 border-l-2 border-blue-200">
+                                            <p className="text-xs font-semibold text-blue-600 uppercase mb-2 tracking-wide">Products & Features</p>
+                                            <div className="text-xs space-y-1">
+                                                {analysis.product_feature_mapping.claims?.length > 0 && (
+                                                    <p><strong>Key Claims:</strong> {analysis.product_feature_mapping.claims.slice(0, 3).join(', ')}</p>
+                                                )}
+                                                {analysis.product_feature_mapping.certifications?.length > 0 && (
+                                                    <p><strong>Certifications:</strong> {analysis.product_feature_mapping.certifications.join(', ')}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 6. Content Strategy */}
+                                    {analysis.content_strategy_messaging && (
+                                        <div className="pl-4 border-l-2 border-purple-200">
+                                            <p className="text-xs font-semibold text-purple-600 uppercase mb-2 tracking-wide">Content Strategy</p>
+                                            <div className="text-xs space-y-1">
+                                                {analysis.content_strategy_messaging.content_pillars?.length > 0 && (
+                                                    <p><strong>Content Pillars:</strong> {analysis.content_strategy_messaging.content_pillars.join(', ')}</p>
+                                                )}
+                                                {analysis.content_strategy_messaging.themes?.length > 0 && (
+                                                    <p><strong>Themes:</strong> {analysis.content_strategy_messaging.themes.join(', ')}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 7. Visual Identity */}
+                                    {analysis.visual_identity_aesthetic && (
+                                        <div className="pl-4 border-l-2 border-pink-200">
+                                            <p className="text-xs font-semibold text-pink-600 uppercase mb-2 tracking-wide">Visual Identity</p>
+                                            <div className="text-xs space-y-1">
+                                                {analysis.visual_identity_aesthetic.colors && (
+                                                    <p><strong>Colors:</strong> {analysis.visual_identity_aesthetic.colors}</p>
+                                                )}
+                                                {analysis.visual_identity_aesthetic.mood && (
+                                                    <p><strong>Mood:</strong> {analysis.visual_identity_aesthetic.mood}</p>
+                                                )}
+                                                {analysis.visual_identity_aesthetic.image_style && (
+                                                    <p><strong>Image Style:</strong> {analysis.visual_identity_aesthetic.image_style}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 8. Customer Psychology */}
+                                    {analysis.customer_psychology && (
+                                        <div className="pl-4 border-l-2 border-cyan-200">
+                                            <p className="text-xs font-semibold text-cyan-600 uppercase mb-2 tracking-wide">Customer Psychology</p>
+                                            <div className="text-xs space-y-1">
+                                                {analysis.customer_psychology.what_customers_praise?.length > 0 && (
+                                                    <div>
+                                                        <strong>What Customers Praise:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.customer_psychology.what_customers_praise.slice(0, 3).map((praise: string, i: number) => (
+                                                                <li key={i}>{praise}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {analysis.customer_psychology.common_frustrations?.length > 0 && (
+                                                    <div>
+                                                        <strong>Common Frustrations:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.customer_psychology.common_frustrations.slice(0, 3).map((frust: string, i: number) => (
+                                                                <li key={i}>{frust}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 9. Brand Personality */}
+                                    {analysis.brand_personality && (
+                                        <div className="pl-4 border-l-2 border-indigo-200">
+                                            <p className="text-xs font-semibold text-indigo-600 uppercase mb-2 tracking-wide">Brand Personality</p>
+                                            <div className="grid grid-cols-2 gap-1 text-xs">
+                                                {analysis.brand_personality.brand_archetype && (
+                                                    <p><strong>Archetype:</strong> {analysis.brand_personality.brand_archetype}</p>
+                                                )}
+                                                {analysis.brand_personality.warmth_score && (
+                                                    <p><strong>Warmth:</strong> {analysis.brand_personality.warmth_score}/10</p>
+                                                )}
+                                                {analysis.brand_personality.tone && (
+                                                    <p><strong>Tone:</strong> {analysis.brand_personality.tone}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 10. Weaknesses (CRITICAL) */}
+                                    {analysis.weakness_detection && (
+                                        <div className="pl-4 border-l-4 border-red-400 bg-red-50 p-3 rounded">
+                                            <p className="text-xs font-bold text-red-700 uppercase mb-2 tracking-wide">⚠️ Detected Weaknesses</p>
+                                            <div className="text-xs space-y-2">
+                                                {analysis.weakness_detection.bad_review_themes?.length > 0 && (
+                                                    <div>
+                                                        <strong className="text-red-600">Bad Review Themes:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.weakness_detection.bad_review_themes.map((theme: string, i: number) => (
+                                                                <li key={i}>{theme}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {analysis.weakness_detection.complaint_patterns?.length > 0 && (
+                                                    <div>
+                                                        <strong className="text-red-600">Complaint Patterns:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.weakness_detection.complaint_patterns.map((pattern: string, i: number) => (
+                                                                <li key={i}>{pattern}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {analysis.weakness_detection.exploitable_gaps?.length > 0 && (
+                                                    <div className="mt-2 p-2 bg-white rounded border border-red-200">
+                                                        <strong className="text-red-700">💡 Exploitable Gaps:</strong>
+                                                        {analysis.weakness_detection.exploitable_gaps.map((gap: any, i: number) => (
+                                                            <div key={i} className="mt-1 text-xs">
+                                                                <p className="font-semibold">→ {gap.gap}</p>
+                                                                <p className="text-green-700 ml-3">✓ Opportunity: {gap.opportunity}</p>
+                                                                <p className="text-blue-700 ml-3">→ Attack Angle: {gap.attack_angle}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 11. Strategic Insights */}
+                                    {analysis.strategic_insights && (
+                                        <div className="pl-4 border-l-4 border-emerald-400 bg-emerald-50 p-3 rounded">
+                                            <p className="text-xs font-bold text-emerald-700 uppercase mb-2 tracking-wide">🎯 Strategic Insights</p>
+                                            <div className="text-xs space-y-2">
+                                                {analysis.strategic_insights.market_gaps?.length > 0 && (
+                                                    <div>
+                                                        <strong className="text-emerald-700">Market Gaps:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.strategic_insights.market_gaps.map((gap: string, i: number) => (
+                                                                <li key={i}>{gap}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {analysis.strategic_insights.positioning_opportunities?.length > 0 && (
+                                                    <div>
+                                                        <strong className="text-emerald-700">Positioning Opportunities:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.strategic_insights.positioning_opportunities.map((opp: string, i: number) => (
+                                                                <li key={i}>{opp}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {analysis.strategic_insights.messaging_opportunities?.length > 0 && (
+                                                    <div>
+                                                        <strong className="text-emerald-700">Messaging Opportunities:</strong>
+                                                        <ul className="list-disc list-inside ml-2">
+                                                            {analysis.strategic_insights.messaging_opportunities.map((opp: string, i: number) => (
+                                                                <li key={i}>{opp}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 12. How to Compete */}
+                                    {analysis.integration_into_brand && (
+                                        <div className="pl-4 border-l-4 border-blue-400 bg-blue-50 p-3 rounded">
+                                            <p className="text-xs font-bold text-blue-700 uppercase mb-2 tracking-wide">⚔️ How to Compete</p>
+                                            <div className="text-xs space-y-1">
+                                                {analysis.integration_into_brand.differentiation_strategy && (
+                                                    <p><strong>Differentiation:</strong> {analysis.integration_into_brand.differentiation_strategy}</p>
+                                                )}
+                                                {analysis.integration_into_brand.positioning_angle && (
+                                                    <p><strong>Positioning Angle:</strong> {analysis.integration_into_brand.positioning_angle}</p>
+                                                )}
+                                                {analysis.integration_into_brand.voice_contrast && (
+                                                    <p><strong>Voice Contrast:</strong> {analysis.integration_into_brand.voice_contrast}</p>
+                                                )}
+                                                {analysis.integration_into_brand.offer_strategy && (
+                                                    <p><strong>Offer Strategy:</strong> {analysis.integration_into_brand.offer_strategy}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+// Product Catalog Section - WooCommerce Products Display
+function ProductCatalogSection({ data }: { data: any }) {
+    if (!data || !data.products || data.products.length === 0) {
+        return (
+            <section className="mb-10 page-break-before">
+                <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-blue-200">
+                    <ShoppingBag className="w-5 h-5 text-blue-600 mt-1" />
+                    <div className="flex-1">
+                        <h2 className="text-xl font-bold text-blue-900">20. Product Catalog</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Your WooCommerce products and collections</p>
+                    </div>
+                </div>
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="p-6 text-center">
+                        <p className="text-amber-800 mb-2">
+                            <strong>🛍️ No products synced yet</strong>
+                        </p>
+                        <p className="text-sm text-amber-700">
+                            Click <strong>"Analyze My Website"</strong> on the Brand Identity page to sync your WooCommerce products.
+                        </p>
+                    </CardContent>
+                </Card>
+            </section>
+        );
+    }
+
+    const { products, collections, totalProducts, lastSync } = data;
+
+    return (
+        <section className="mb-10 page-break-before">
+            <div className="flex items-start gap-3 mb-4 pb-3 border-b-2 border-blue-200">
+                <ShoppingBag className="w-5 h-5 text-blue-600 mt-1" />
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold text-blue-900">20. Product Catalog</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {totalProducts} product{totalProducts !== 1 ? 's' : ''} •
+                        {collections.length > 0 && ` ${collections.length} collection${collections.length !== 1 ? 's' : ''} • `}
+                        Last synced: {lastSync ? new Date(lastSync).toLocaleDateString() : 'Never'}
+                    </p>
+                </div>
+            </div>
+
+            <div className="space-y-6">
+                {/* Collections */}
+                {collections && collections.length > 0 && (
+                    <div className="pl-4 border-l-4 border-blue-300 bg-blue-50 p-4 rounded">
+                        <p className="text-sm font-bold text-blue-700 uppercase mb-3 tracking-wide">📦 Collections</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {collections.map((collection: any, index: number) => (
+                                <Card key={index} className="border-blue-200">
+                                    <CardContent className="p-3">
+                                        <p className="font-semibold text-sm">{collection.name}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{collection.productCount} products</p>
+                                        {collection.description && (
+                                            <p className="text-xs text-gray-600 mt-2 line-clamp-2">{collection.description}</p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Products Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                    {products.slice(0, 12).map((product: any, index: number) => (
+                        <Card key={index} className="border-blue-200 hover:shadow-lg transition-shadow avoid-break" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                            {product.image && (
+                                <div className="h-24 bg-gray-100 flex items-center justify-center p-2">
+                                    <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        className="max-h-full max-w-full object-contain"
+                                        style={{ maxHeight: '80px', objectFit: 'contain' }}
+                                        onError={(e: any) => e.target.style.display = 'none'}
+                                    />
+                                </div>
+                            )}
+                            <CardContent className="p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                    <h3 className="font-semibold text-xs flex-1 leading-tight">{product.name}</h3>
+                                    {product.price && (
+                                        <Badge variant="secondary" className="text-xs shrink-0">${product.price}</Badge>
+                                    )}
+                                </div>
+
+                                {product.description && (
+                                    <p className="text-xs text-gray-600 leading-tight">{product.description}</p>
+                                )}
+
+                                <div className="flex items-center justify-between gap-2 text-xs pt-1">
+                                    {product.categories && product.categories.length > 0 && (
+                                        <Badge variant="outline" className="text-xs">{product.categories[0]}</Badge>
+                                    )}
+                                    <Badge
+                                        variant={product.inStock ? "default" : "destructive"}
+                                        className="text-xs shrink-0"
+                                    >
+                                        {product.inStock ? 'In Stock' : 'Out of Stock'}
+                                    </Badge>
+                                </div>
+
+                                {product.sku && (
+                                    <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                {products.length > 12 && (
+                    <Card className="border-blue-200 bg-blue-50">
+                        <CardContent className="p-4 text-center text-sm text-blue-700">
+                            <strong>+ {products.length - 12} more products</strong> in your catalog
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+        </section>
+    );
+}
+
+// Generate comprehensive plain text version for export
+function generatePlaybookText(brandIdentity: any, project: any, competitors: any[]): string {
+    let text = `========================================\n`;
+    text += `${project?.name || "BRAND"} MASTER PLAYBOOK\n`;
+    text += `========================================\n\n`;
+    text += `Generated: ${new Date().toLocaleDateString()}\n`;
+    text += `CONFIDENTIAL - Strategic Brand Intelligence\n\n`;
+
+    // Helper function to add section
+    const addSection = (title: string, data: any, keys: string[]) => {
+        if (data && Object.keys(data).length > 0) {
+            text += `\n${title}\n${"=".repeat(title.length)}\n\n`;
+            for (const key of keys) {
+                const value = data[key];
+                if (value) {
+                    const label = key.replace(/_/g, ' ').toUpperCase();
+                    if (Array.isArray(value)) {
+                        text += `${label}:\n`;
+                        value.forEach(item => text += `  - ${item}\n`);
+                        text += `\n`;
+                    } else {
+                        text += `${label}: ${value}\n\n`;
+                    }
+                }
+            }
+        }
+    };
+
+    // Add all sections
+    addSection("1. BRAND DNA & PHILOSOPHY", brandIdentity.dna,
+        ["name", "problem_solved", "origin_story", "mission", "vision", "world_problem", "emotional_outcome", "differentiator", "anti_identity", "values", "ethical_boundaries", "standards", "ten_year_identity"]);
+
+    addSection("2. PRODUCT INTELLIGENCE", brandIdentity.product,
+        ["name", "category", "main_benefits", "unique_features", "quality_level", "price_point", "why_choose_us"]);
+
+    addSection("3. TARGET AUDIENCE & PSYCHOLOGY", brandIdentity.audience,
+        ["ideal_customer", "pain_points", "desires", "fears", "shopping_behavior", "influences"]);
+
+    addSection("4. STRATEGIC POSITIONING", brandIdentity.positioning,
+        ["market_category", "sub_category", "target_audience", "not_for", "remembered_for", "dominant_idea"]);
+
+    addSection("5. MARKET & COMPETITION", brandIdentity.market,
+        ["competitors", "positioning", "market_gap"]);
+
+    addSection("6. OFFER STRUCTURE", brandIdentity.offer,
+        ["price_strategy", "bundles", "subscriptions"]);
+
+    addSection("7. CUSTOMER JOURNEY", brandIdentity.journey,
+        ["discovery", "hesitation", "after_purchase"]);
+
+    // Visual Identity (custom handling for complex data)
+    if (brandIdentity.visual) {
+        text += `\n8. VISUAL IDENTITY\n${"=".repeat(18)}\n\n`;
+
+        if (brandIdentity.visual.colors?.primary?.length > 0) {
+            text += `COLORS:\n`;
+            brandIdentity.visual.colors.primary.forEach((color: any) => {
+                text += `  - ${color.name}: ${color.hex}\n`;
+            });
+            text += `\n`;
+        }
+
+        if (brandIdentity.visual.typography) {
+            text += `TYPOGRAPHY:\n`;
+            if (brandIdentity.visual.typography.headings?.length > 0) {
+                text += `  Headings:\n`;
+                brandIdentity.visual.typography.headings.forEach((font: any) => {
+                    text += `    - ${font.family}`;
+                    if (font.weights?.length > 0) {
+                        text += ` (Weights: ${font.weights.join(', ')})`;
+                    }
+                    text += `\n`;
+                });
+            }
+            if (brandIdentity.visual.typography.body?.length > 0) {
+                text += `  Body:\n`;
+                brandIdentity.visual.typography.body.forEach((font: any) => {
+                    text += `    - ${font.family}`;
+                    if (font.weights?.length > 0) {
+                        text += ` (Weights: ${font.weights.join(', ')})`;
+                    }
+                    text += `\n`;
+                });
+            }
+            text += `\n`;
+        }
+
+        if (brandIdentity.visual.logo?.url) {
+            text += `LOGO: ${brandIdentity.visual.logo.url}\n\n`;
+        }
+
+        if (brandIdentity.visual.image_style) {
+            text += `IMAGE STYLE: ${brandIdentity.visual.image_style}\n\n`;
+        }
+
+        if (brandIdentity.visual.mood) {
+            text += `VISUAL MOOD: ${brandIdentity.visual.mood}\n\n`;
+        }
+    }
+
+    addSection("9. VOICE & TONE", brandIdentity.voice,
+        ["personality_traits", "vocabulary_style", "humor_level", "authority_level", "emotional_range", "words_to_use", "words_to_avoid", "on_brand_phrases", "forbidden_phrases"]);
+
+    addSection("10. BRAND GUARDRAILS", brandIdentity.guardrails,
+        ["regulatory_limits", "cultural_sensitivities", "platform_policies", "forbidden_claims"]);
+
+    addSection("11. NARRATIVE ARCHITECTURE", brandIdentity.narrative,
+        ["hero", "villain", "guide", "transformation", "outcome"]);
+
+    addSection("12. PROBLEM MATRIX & PAIN HIERARCHY", brandIdentity.pain_matrix,
+        ["physical_problems", "emotional_problems", "social_problems", "financial_problems", "identity_problems"]);
+
+    addSection("13. CONTENT PILLAR SYSTEM", brandIdentity.content_pillars,
+        ["pillar_1", "pillar_2", "pillar_3", "pillar_4"]);
+
+    addSection("14. TRUST INFRASTRUCTURE", brandIdentity.trust_infrastructure,
+        ["social_proof_types", "certifications", "partnerships", "media_mentions", "guarantees"]);
+
+    addSection("15. COMMUNITY MODEL", brandIdentity.community_model,
+        ["customer_treatment_philosophy", "problem_resolution_protocol", "loyalty_building_tactics", "community_building_strategy"]);
+
+    addSection("16. PLATFORM STRATEGY", brandIdentity.platform_strategy,
+        ["primary_platforms", "platform_tone_adjustments", "content_types_per_platform"]);
+
+    addSection("17. LONG-TERM VISION", brandIdentity.long_term_vision,
+        ["future_products", "future_markets", "future_positioning", "brand_evolution_path"]);
+
+    addSection("18. KPIs & OPTIMIZATION", brandIdentity.kpis_optimization,
+        ["success_metrics", "benchmarks", "growth_targets"]);
+
+    addSection("19. AI AUTONOMY RULES", brandIdentity.ai_autonomy_rules,
+        ["can_decide_alone", "requires_approval", "forbidden_actions", "escalation_logic"]);
+
+    // Add competitor intelligence (comprehensive)
+    if (competitors && competitors.length > 0) {
+        text += `\n20. COMPETITOR INTELLIGENCE\n${"=".repeat(26)}\n\n`;
+        competitors.forEach((comp, i) => {
+            const analysis = comp.analysis;
+            text += `\n--- COMPETITOR ${i + 1}: ${comp.name} ---\n`;
+            text += `Website: ${comp.website_url}\n\n`;
+
+            if (analysis?.competitor_identification) {
+                text += `TYPE: ${analysis.competitor_identification.competitor_type}\n`;
+                text += `Threat Level: ${analysis.competitor_identification.threat_level}/10\n`;
+                text += `Priority: ${analysis.competitor_identification.priority_to_monitor}\n\n`;
+            }
+
+            if (analysis?.brand_positioning_extraction) {
+                text += `POSITIONING:\n`;
+                text += `Core Promise: ${analysis.brand_positioning_extraction.core_promise || 'N/A'}\n`;
+                text += `Emotional Angle: ${analysis.brand_positioning_extraction.emotional_angle || 'N/A'}\n\n`;
+            }
+
+            if (analysis?.target_audience_signals?.demographics) {
+                text += `TARGET AUDIENCE:\n`;
+                text += `Demographics: ${analysis.target_audience_signals.demographics.age_range}, ${analysis.target_audience_signals.demographics.gender}\n`;
+                text += `Emotional State: ${analysis.target_audience_signals.emotional_state_targeted || 'N/A'}\n\n`;
+            }
+
+            if (analysis?.offer_structure_pricing) {
+                text += `PRICING:\n`;
+                text += `Price Ranges: ${analysis.offer_structure_pricing.price_ranges || 'N/A'}\n\n`;
+            }
+
+            if (analysis?.weakness_detection?.exploitable_gaps?.length > 0) {
+                text += `EXPLOITABLE WEAKNESSES:\n`;
+                analysis.weakness_detection.exploitable_gaps.forEach((gap: any) => {
+                    text += `  - Gap: ${gap.gap}\n`;
+                    text += `    Opportunity: ${gap.opportunity}\n`;
+                    text += `    Attack Angle: ${gap.attack_angle}\n`;
+                });
+                text += `\n`;
+            }
+
+            if (analysis?.strategic_insights) {
+                text += `STRATEGIC INSIGHTS:\n`;
+                if (analysis.strategic_insights.market_gaps?.length > 0) {
+                    text += `Market Gaps:\n`;
+                    analysis.strategic_insights.market_gaps.forEach((gap: string) => {
+                        text += `  - ${gap}\n`;
+                    });
+                }
+                if (analysis.strategic_insights.positioning_opportunities?.length > 0) {
+                    text += `Positioning Opportunities:\n`;
+                    analysis.strategic_insights.positioning_opportunities.forEach((opp: string) => {
+                        text += `  - ${opp}\n`;
+                    });
+                }
+                text += `\n`;
+            }
+
+            if (analysis?.integration_into_brand) {
+                text += `HOW TO COMPETE:\n`;
+                text += `Differentiation: ${analysis.integration_into_brand.differentiation_strategy || 'N/A'}\n`;
+                text += `Positioning Angle: ${analysis.integration_into_brand.positioning_angle || 'N/A'}\n`;
+                text += `Offer Strategy: ${analysis.integration_into_brand.offer_strategy || 'N/A'}\n\n`;
+            }
+
+            text += `${"=".repeat(50)}\n`;
+        });
+    }
+
+    text += `\n========================================\n`;
+    text += `END OF MASTER PLAYBOOK\n`;
+    text += `========================================\n`;
+    text += `\n© ${new Date().getFullYear()} ${project?.name || "Your Brand"}. All Rights Reserved.\n`;
+
+    return text;
+}

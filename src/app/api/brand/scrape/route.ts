@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
 import { firecrawl } from '@/lib/firecrawl';
 
-export const maxDuration = 60; // Extend timeout for long scraping/generation
+export const maxDuration = 120; // Extend timeout for comprehensive 19-module extraction
 
 export async function POST(req: NextRequest) {
     try {
@@ -96,20 +96,60 @@ export async function POST(req: NextRequest) {
         - No creative writing
         - Structured data only (JSON-compatible)
 
-        The output MUST be a valid JSON object with the following structure:
+        The output MUST be a valid JSON object with ALL 19 MODULES:
         {
             "dna": {
                 "name": "Brand Name",
-                "origin_story": "Why it was created",
-                "problem_solved": "What personal problem did they solve?",
-                "mission": "What they stand for",
-                "personality_adjectives": ["adj1", "adj2"],
-                "core_values": ["value1", "value2"],
-                "differentiator": "Why different from competitors",
-                "anti_identity": "What they never want to be",
-                "brand_archetype": "Emotional/Functional/Rebellious/etc",
-                "admired_brands": ["brand1"]
+                "origin_story": "Why it was created (narrative)",
+                "origin_motivation": "REAL reason created - personal experience",
+                "world_problem": "Problem in world/industry trying to fix",
+                "emotional_outcome_goal": "What customers should FEEL",
+                "problem_solved": "Core problem solved",
+                "mission": "What they stand for / do every day",
+                "values": "Core values (comma separated)",
+                "differentiator": "Main differentiator",
+                "anti_identity": "Never want to be associated with",
+                "ethical_boundaries": "Won't do even if profitable",
+                "non_negotiable_standards": "Quality/honesty standards",
+                "ten_year_vision": "Company in 10 years",
+                "company_identity_goal": "How want to be remembered"
             },
+            "positioning": {
+                "market_category": "Category competing in",
+                "subcategory_to_own": "Sub-category trying to own",
+                "not_for": "Who this is NOT for",
+                "remembered_for": "Want to be remembered for",
+                "dominant_brand_idea": "Single dominant idea"
+            },
+            "audience": {
+                "ideal_customer": "Description",
+                "demographics": { "age": "Range", "gender": "Gender", "income": "Level" },
+                "pain_points": ["pain1", "pain2"],
+                "desires": ["desire1", "desire2"],
+                "fears": ["fear1"],
+                "shopping_behavior": "Impulse vs Research",
+                "influences": "Who influences them"
+            },
+            "audience_intelligence": {
+                "emotional_triggers": ["trigger1", "trigger2"],
+                "identity_drivers": "Who they think they are/want to be",
+                "language_style": "How they actually speak",
+                "content_behavior": "Where/how consume content",
+                "buying_objections": ["objection1"],
+                "decision_logic": "Emotional vs rational"
+            },
+            "pain_matrix": [
+                {
+                    "problem": "Problem description",
+                    "type": "physical|emotional|social|financial|time|identity",
+                    "emotional_intensity": 7,
+                    "caused_by": "What caused it",
+                    "why_persists": "Why it persists",
+                    "why_solutions_fail": "Why current solutions fail",
+                    "how_feels": "How it makes them feel",
+                    "cost_if_unsolved": "Cost if not solved"
+                }
+            ],
             "product": {
                 "name": "Top Product Name",
                 "category": "Category",
@@ -120,13 +160,11 @@ export async function POST(req: NextRequest) {
                 "objections": ["objection1"],
                 "why_choose_us": "Reason"
             },
-            "audience": {
-                "ideal_customer": "Description",
-                "demographics": { "age": "Range", "gender": "Gender", "income": "Level" },
-                "pain_points": ["pain1", "pain2"],
-                "desires": ["desire1", "desire2"],
-                "fears": ["fear1"],
-                "shopping_behavior": "Impulse vs Research"
+            "product_intelligence": {
+                "hero_products": ["product1"],
+                "support_products": ["product2"],
+                "upsell_products": ["product3"],
+                "emotional_purposes": "What owning this MEANS"
             },
             "market": {
                 "competitors": ["comp1", "comp2"],
@@ -135,20 +173,28 @@ export async function POST(req: NextRequest) {
             },
             "offer": {
                 "price_strategy": "Premium/Budget",
-                "bundles": true/false,
-                "subscriptions": true/false
+                "bundles": true,
+                "subscriptions": false
+            },
+            "offer_architecture": {
+                "entry_offers": ["offer1"],
+                "core_offers": ["offer2"],
+                "high_ticket_offers": ["offer3"],
+                "scarcity_triggers": ["trigger1"],
+                "urgency_logic": "How urgency used",
+                "risk_reversal_methods": ["guarantee1"]
             },
             "voice": {
                 "tone_adjectives": ["adj1", "adj2", "adj3"],
                 "archetype": "Authority/Friend/Mentor/etc",
                 "language_style": {
-                    "can_be_provocative": boolean,
                     "use_emojis": "Never/Sometimes/Often",
-                    "use_slang": boolean,
+                    "use_slang": false,
                     "sentence_structure": "Short/Long"
                 },
                 "emotional_driver": "Fear/Desire/Status",
-                "perspective": "I/We/You"
+                "perspective": "I/We/You",
+                "sentence_structure": "Short/Long"
             },
             "guardrails": {
                 "forbidden_topics": ["topic1"],
@@ -163,12 +209,78 @@ export async function POST(req: NextRequest) {
                 "fonts": ["font1"],
                 "aesthetic": "Clean/Bold/Luxury"
             },
-            "creative": {
-                "angles": ["angle1", "angle2"],
-                "hero_type": "Product vs Person",
-                "style": "UGC/Cinematic/etc"
+            "narrative": {
+                "hero": "customer",
+                "villain": "problem",
+                "guide": "brand",
+                "struggle": "The journey",
+                "transformation": "Before to After",
+                "outcome": "The promised land",
+                "story_templates": ["template1"]
             },
-            "one_sentence_summary": "If customer could say one sentence after using product..."
+            "journey": {
+                "discovery": "How they find you",
+                "hesitation": "Where they hesitate",
+                "after_purchase": "Post-purchase experience"
+            },
+            "funnel_psychology": {
+                "stages": {
+                    "awareness": {
+                        "emotional_state": "State",
+                        "key_questions": ["q1"],
+                        "objections": ["obj1"],
+                        "content_type": "Type",
+                        "desired_action": "Action"
+                    }
+                }
+            },
+            "trust_infrastructure": {
+                "social_proof_types": ["type1"],
+                "testimonial_style": "Style",
+                "certifications": ["cert1"],
+                "guarantees": ["guarantee1"],
+                "transparency_rules": ["rule1"]
+            },
+            "content_pillars": [
+                {
+                    "name": "Pillar name",
+                    "purpose": "Strategic purpose",
+                    "emotional_tone": "Tone",
+                    "example_topics": ["topic1"],
+                    "platforms": ["platform1"]
+                }
+            ],
+            "community_model": {
+                "customer_treatment_rules": "How treat customers",
+                "problem_response_protocol": "How handle problems",
+                "criticism_handling": "How handle criticism",
+                "loyalty_building_tactics": ["tactic1"]
+            },
+            "platform_strategy": {
+                "facebook": {
+                    "role": "Why there",
+                    "content_type": "Type",
+                    "tone": "Tone",
+                    "frequency": "Frequency"
+                }
+            },
+            "expansion_vision": {
+                "future_products": ["product1"],
+                "future_markets": ["market1"],
+                "future_positioning": "How will evolve",
+                "brand_evolution_path": "Evolution path"
+            },
+            "kpis": {
+                "success_metrics": ["metric1"],
+                "benchmarks": "Benchmark targets",
+                "growth_targets": "Growth goals"
+            },
+            "ai_autonomy_rules": {
+                "can_decide_alone": ["decision1"],
+                "requires_approval": ["decision2"],
+                "escalation_logic": "When escalate",
+                "risk_thresholds": "Risk limits"
+            }
         }
         `;
 

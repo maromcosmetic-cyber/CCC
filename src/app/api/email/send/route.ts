@@ -30,25 +30,26 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Create Transporter
+        const s = settings as any; // Cast for type safety workaround
         let transporterConfig: any = {
-            host: settings.smtp_host || 'smtp.gmail.com',
-            port: settings.smtp_port || 587,
-            secure: settings.smtp_secure !== false,
+            host: s.smtp_host || 'smtp.gmail.com',
+            port: s.smtp_port || 587,
+            secure: s.smtp_secure !== false,
             auth: {
-                user: settings.smtp_user,
-                pass: settings.smtp_pass,
+                user: s.smtp_user,
+                pass: s.smtp_pass,
             },
         };
 
         // If OAuth tokens exist, override auth
-        if (settings.gmail_access_token) {
+        if (s.gmail_access_token) {
             transporterConfig = {
                 service: 'gmail',
                 auth: {
                     type: 'OAuth2',
-                    user: settings.sender_email,
-                    accessToken: settings.gmail_access_token,
-                    refreshToken: settings.gmail_refresh_token,
+                    user: s.sender_email,
+                    accessToken: s.gmail_access_token,
+                    refreshToken: s.gmail_refresh_token,
                     // Note: Refreshing might fail if ClientID/Secret are not provided here 
                     // and not inferred by nodemailer from environment.
                     // For now, we rely on the access token being valid (fresh login).
@@ -56,11 +57,14 @@ export async function POST(req: NextRequest) {
             };
         }
 
+        // Use settings for from address
+        const fromAddress = `"${s.sender_name}" <${s.sender_email}>`;
+
         const transporter = nodemailer.createTransport(transporterConfig);
 
         // 3. Send
         const info = await transporter.sendMail({
-            from: `"${settings.sender_name}" <${settings.sender_email}>`,
+            from: fromAddress,
             to: to, // or array
             subject: subject,
             html: html,

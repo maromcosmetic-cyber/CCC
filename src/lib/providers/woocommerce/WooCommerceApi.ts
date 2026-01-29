@@ -1,173 +1,168 @@
 import { WooCommerceProvider, WooCommerceProduct } from '../base/WooCommerceProvider';
+import WooCommerceRestApi from "@woocommerce/woocommerce-rest-api";
 
 /**
  * WooCommerce REST API Implementation
- * 
- * TODO: Replace this stub with actual WooCommerce REST API integration
- * 
- * WooCommerce REST API Documentation: https://woocommerce.github.io/woocommerce-rest-api-docs/
- * 
- * Integration steps:
- * 1. Set WOOCOMMERCE_STORE_URL, WOOCOMMERCE_CONSUMER_KEY, WOOCOMMERCE_CONSUMER_SECRET in environment variables
- * 2. Install woocommerce-api or use fetch to call WooCommerce REST API
- * 3. Replace mock implementation with actual API calls:
- *    - GET /wp-json/wc/v3/products to fetch products
- *    - POST /wp-json/wc/v3/products to create products
- *    - PUT /wp-json/wc/v3/products/{id} to update products
- *    - DELETE /wp-json/wc/v3/products/{id} to delete products
- * 4. Implement Basic Auth or OAuth 1.0a authentication
- * 5. Add error handling for rate limits and API errors
  */
 export class WooCommerceApi implements WooCommerceProvider {
+  private client: any;
   private storeUrl?: string;
-  private consumerKey?: string;
-  private consumerSecret?: string;
 
-  constructor(credentials?: { store_url?: string; consumer_key?: string; consumer_secret?: string }) {
-    // User-managed provider: MUST have user credentials, no env fallback
+  constructor(credentials?: { store_url?: string; consumer_key?: string; consumer_secret?: string; api_version?: string }) {
     if (credentials?.store_url && credentials?.consumer_key && credentials?.consumer_secret) {
       this.storeUrl = credentials.store_url;
-      this.consumerKey = credentials.consumer_key;
-      this.consumerSecret = credentials.consumer_secret;
-    } else {
-      // No credentials provided - stub mode only
-      this.storeUrl = undefined;
-      this.consumerKey = undefined;
-      this.consumerSecret = undefined;
+
+      let url = String(credentials.store_url);
+      if (!url.startsWith('http')) {
+        if (url.includes('localhost') || url.includes('127.0.0.1')) {
+          url = `http://${url}`;
+        } else {
+          url = `https://${url}`;
+        }
+      }
+
+      this.client = new WooCommerceRestApi({
+        url: url,
+        consumerKey: credentials.consumer_key,
+        consumerSecret: credentials.consumer_secret,
+        version: ((credentials.api_version && credentials.api_version.match(/^v\d+$/)
+          ? `wc/${credentials.api_version}`
+          : credentials.api_version) || "wc/v3") as any,
+        queryStringAuth: false,
+        axiosConfig: {
+          headers: {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Authorization": `Basic ${Buffer.from(credentials.consumer_key + ":" + credentials.consumer_secret).toString('base64')}`
+          }
+        }
+      });
     }
   }
 
-  async syncProducts(storeUrl: string, credentials: any): Promise<WooCommerceProduct[]> {
-    // TODO: Implement actual WooCommerce API call
-    if (!this.storeUrl && !storeUrl) {
-      // Return mock products
-      return [
-        {
-          id: 1,
-          name: 'Premium Headphones',
-          description: 'High-quality wireless headphones',
-          price: '199.99',
-          regular_price: '199.99',
-          stock_status: 'instock',
-          images: [
-            { id: 1, src: 'https://example.com/images/headphones.jpg', alt: 'Premium Headphones' },
-          ],
-          categories: [{ id: 1, name: 'Electronics' }],
-        },
-        {
-          id: 2,
-          name: 'Smart Watch',
-          description: 'Feature-rich smartwatch',
-          price: '299.99',
-          regular_price: '299.99',
-          stock_status: 'instock',
-          images: [
-            { id: 2, src: 'https://example.com/images/watch.jpg', alt: 'Smart Watch' },
-          ],
-          categories: [{ id: 1, name: 'Electronics' }],
-        },
-        {
-          id: 3,
-          name: 'Wireless Speaker',
-          description: 'Portable Bluetooth speaker',
-          price: '149.99',
-          regular_price: '149.99',
-          stock_status: 'instock',
-          images: [
-            { id: 3, src: 'https://example.com/images/speaker.jpg', alt: 'Wireless Speaker' },
-          ],
-          categories: [{ id: 1, name: 'Electronics' }],
-        },
-      ];
+  async syncProducts(storeUrl?: string, credentials?: any): Promise<WooCommerceProduct[]> {
+    try {
+      // Use instance client if available, or create temporary one if credentials provided
+      let client = this.client;
+
+      if (!client && storeUrl && credentials) {
+        let url = String(storeUrl);
+        if (!url.startsWith('http')) {
+          if (url.includes('localhost') || url.includes('127.0.0.1')) {
+            url = `http://${url}`;
+          } else {
+            url = `https://${url}`;
+          }
+        }
+
+        client = new WooCommerceRestApi({
+          url: url,
+          consumerKey: credentials.consumer_key,
+          consumerSecret: credentials.consumer_secret,
+          version: ((credentials.api_version && credentials.api_version.match(/^v\d+$/)
+            ? `wc/${credentials.api_version}`
+            : credentials.api_version) || "wc/v3") as any,
+          queryStringAuth: false,
+          axiosConfig: {
+            headers: {
+              "Content-Type": "application/json;charset=UTF-8",
+              "Authorization": `Basic ${Buffer.from(credentials.consumer_key + ":" + credentials.consumer_secret).toString('base64')}`
+            }
+          }
+        });
+      }
+
+      if (!client) {
+        throw new Error("WooCommerce client not initialized");
+      }
+
+      let allProducts: WooCommerceProduct[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        console.log(`[WooCommerceApi] Syncing page ${page}...`);
+        const response = await client.get("products", {
+          per_page: 50,
+          page: page
+        });
+
+        const products = response.data.map(this.transformProduct);
+
+        if (products.length === 0) {
+          hasMore = false;
+        } else {
+          allProducts = allProducts.concat(products);
+
+          // If we got fewer than requested, we're likely done
+          if (products.length < 50) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        }
+      }
+
+      console.log(`[WooCommerceApi] Total products synced: ${allProducts.length}`);
+      return allProducts;
+    } catch (error: any) {
+      console.error("Failed to sync products:", error);
+      throw new Error(`WooCommerce Sync Failed: ${error.message}`);
     }
-
-    // Actual implementation would be:
-    /*
-    const url = `${storeUrl || this.storeUrl}/wp-json/wc/v3/products`;
-    const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`WooCommerce API error: ${response.statusText}`);
-    }
-
-    const products = await response.json();
-    return products.map(this.transformProduct);
-    */
-
-    return [
-      {
-        id: 1,
-        name: 'Premium Headphones',
-        description: 'High-quality wireless headphones',
-        price: '199.99',
-        regular_price: '199.99',
-        stock_status: 'instock',
-        images: [{ id: 1, src: 'https://example.com/images/headphones.jpg', alt: 'Premium Headphones' }],
-        categories: [{ id: 1, name: 'Electronics' }],
-      },
-    ];
   }
 
   async getProduct(productId: number): Promise<WooCommerceProduct> {
-    // TODO: Implement actual WooCommerce API call
-    return {
-      id: productId,
-      name: 'Mock Product',
-      description: 'Mock product description',
-      price: '99.99',
-      regular_price: '99.99',
-      stock_status: 'instock',
-      images: [],
-      categories: [],
-    };
+    if (!this.client) throw new Error("WooCommerce client not initialized");
+    const response = await this.client.get(`products/${productId}`);
+    return this.transformProduct(response.data);
   }
 
   async updateProduct(productId: number, updates: Partial<WooCommerceProduct>): Promise<WooCommerceProduct> {
-    // TODO: Implement actual WooCommerce API call
-    return {
-      id: productId,
-      name: updates.name || 'Updated Product',
-      description: updates.description,
-      price: updates.price || '99.99',
-      regular_price: updates.regular_price,
-      stock_status: updates.stock_status || 'instock',
-      images: updates.images || [],
-      categories: updates.categories || [],
-    };
+    if (!this.client) throw new Error("WooCommerce client not initialized");
+
+    // Map internal fields back to WC API format if needed
+    // The updates object is likely coming from shared code, so we pass it directly
+    // but ensure meta_data is formatted correctly if present
+    const payload: any = { ...updates };
+
+    // Safety check for regular_price / price fields
+    if (payload.regular_price) payload.regular_price = String(payload.regular_price);
+    if (payload.sale_price) payload.sale_price = String(payload.sale_price);
+
+    const response = await this.client.put(`products/${productId}`, payload);
+    return this.transformProduct(response.data);
   }
 
   async createProduct(product: Partial<WooCommerceProduct>): Promise<WooCommerceProduct> {
-    // TODO: Implement actual WooCommerce API call
-    return {
-      id: Date.now(),
-      name: product.name || 'New Product',
-      description: product.description,
-      price: product.price || '0.00',
-      regular_price: product.regular_price,
-      stock_status: product.stock_status || 'instock',
-      images: product.images || [],
-      categories: product.categories || [],
-    };
+    if (!this.client) throw new Error("WooCommerce client not initialized");
+    const response = await this.client.post("products", product);
+    return this.transformProduct(response.data);
   }
 
   async deleteProduct(productId: number): Promise<void> {
-    // TODO: Implement actual WooCommerce API call
+    if (!this.client) throw new Error("WooCommerce client not initialized");
+    await this.client.delete(`products/${productId}`, { force: true });
   }
 
   async getCategories(): Promise<Array<{ id: number; name: string }>> {
-    // TODO: Implement actual WooCommerce API call
-    return [
-      { id: 1, name: 'Electronics' },
-      { id: 2, name: 'Home' },
-      { id: 3, name: 'Fashion' },
-    ];
+    if (!this.client) throw new Error("WooCommerce client not initialized");
+    const response = await this.client.get("products/categories");
+    return response.data;
+  }
+
+  private transformProduct(p: any): WooCommerceProduct {
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      regular_price: p.regular_price,
+      sale_price: p.sale_price,
+      stock_status: p.stock_status,
+      stock_quantity: p.stock_quantity,
+      images: p.images,
+      categories: p.categories,
+      meta_data: p.meta_data,
+      status: p.status
+    };
   }
 }
-
